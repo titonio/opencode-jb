@@ -1,0 +1,17 @@
+# IntelliJ project files
+.idea/
+*.iml
+out/
+build/
+
+# Gradle
+.gradle/
+gradle/
+gradlew
+gradlew.bat
+
+# Kotlin
+.kotlin/
+
+# Mac
+.DS_Store

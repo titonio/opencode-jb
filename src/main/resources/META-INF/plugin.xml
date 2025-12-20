@@ -1,0 +1,33 @@
+<idea-plugin>
+    <id>com.opencode</id>
+    <name>OpenCode</name>
+    <vendor>opencode</vendor>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.plugins.terminal</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="OpenCode" secondary="false" icon="com.opencode.icons.OpenCodeIcons.ToolWindow" anchor="right" factoryClass="com.opencode.toolwindow.OpenCodeToolWindowFactory"/>
+    </extensions>
+
+    <actions>
+        <action id="OpenCode.OpenTerminal" class="com.opencode.actions.OpenTerminalAction" text="Open OpenCode" description="Open OpenCode terminal">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl ESCAPE"/>
+            <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta ESCAPE"/>
+        </action>
+        <action id="OpenCode.OpenNewTerminal" class="com.opencode.actions.OpenNewTerminalAction" text="Open OpenCode in New Tab" description="Open OpenCode in new terminal tab">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift ESCAPE"/>
+            <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta shift ESCAPE"/>
+        </action>
+        <action id="OpenCode.AddFilepath" class="com.opencode.actions.AddFilepathAction" text="Add Filepath to OpenCode" description="Add current filepath to OpenCode terminal">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt K"/>
+            <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta alt K"/>
+        </action>
+        <action id="OpenCode.ToggleToolWindow" class="com.opencode.actions.ToggleToolWindowAction" text="Toggle OpenCode Tool Window" description="Show or hide OpenCode tool window">
+            <keyboard-shortcut keymap="$default" first-keystroke="alt shift W"/>
+        </action>
+    </actions>
+</idea-plugin>

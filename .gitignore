@@ -1,0 +1,8 @@
+.gradle
+build
+out
+.idea
+*.iml
+local.properties
+.intellijPlatform
+.claude/skills/intellij-plugin-builder/references/intellij-sdk-docs
