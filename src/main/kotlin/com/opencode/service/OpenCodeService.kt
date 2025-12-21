@@ -11,7 +11,6 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.jetbrains.plugins.terminal.TerminalToolWindowManager
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
@@ -38,6 +37,7 @@ class OpenCodeService(private val project: Project) {
     }
 
     fun initToolWindow(toolWindow: ToolWindow) {
+        println("OpenCodeService.initToolWindow called")
         val contentFactory = com.intellij.ui.content.ContentFactory.getInstance()
         
         // Ensure that if content already exists, we don't duplicate it or leave it in a weird state
@@ -54,101 +54,103 @@ class OpenCodeService(private val project: Project) {
             toolWindow.isShowStripeButton = true
             toolWindow.setType(com.intellij.openapi.wm.ToolWindowType.SLIDING, null)
             
-            val port = Random.nextInt(16384, 65536)
-            val isWindows = System.getProperty("os.name").lowercase().contains("win")
-
-            val command = if (isWindows) {
-                "opencode --port $port"
-            } else {
-                "export _EXTENSION_OPENCODE_PORT=$port; export OPENCODE_CALLER=intellij; opencode --port $port"
-            }
-
-            val terminalView = TerminalToolWindowManager.getInstance(project)
-            val widget = terminalView.createLocalShellWidget(project.basePath, terminalName)
-            widget.background = UIUtil.getPanelBackground()
+            println("Creating terminal widget...")
+            val (widget, port) = createTerminalWidget()
+            println("Created terminal widget on port $port")
             
-            panel.setContent(widget)
-            
-            widgetPorts[widget] = port
-            widget.executeCommand(command)
-            
-            ApplicationManager.getApplication().executeOnPooledThread {
-                 waitForConnection(port)
-            }
+            panel.setContent(widget.component)
         }
     }
 
-    fun openTerminal(newTab: Boolean = false, initialFile: String? = null) {
-        val termToolWindow = ToolWindowManager.getInstance(project).getToolWindow("Terminal")
-        termToolWindow?.show()
-
-        var widget: JBTerminalWidget? = null
-
-        if (!newTab) {
-            // Find existing widget
-            val iterator = widgetPorts.iterator()
-            while (iterator.hasNext()) {
-                val (w, _) = iterator.next()
-                // Check if widget is still valid (simple check)
-                if (!w.isDisplayable) {
-                     iterator.remove()
-                     continue
-                }
-                widget = w
-                break
-            }
-        }
-
-        if (widget != null) {
-            val port = widgetPorts[widget]
-            if (port != null && initialFile != null) {
-                appendPromptAsync(port, "In $initialFile")
-            }
-            return
-        }
-        
-        // Create new terminal
+    fun createTerminalWidget(): Pair<JBTerminalWidget, Int> {
         val port = Random.nextInt(16384, 65536)
         val isWindows = System.getProperty("os.name").lowercase().contains("win")
 
-        val command = if (isWindows) {
-            "opencode --port $port"
-        } else {
-            "export _EXTENSION_OPENCODE_PORT=$port; export OPENCODE_CALLER=intellij; opencode --port $port"
+        val widgetDisposable = com.intellij.openapi.Disposable { }
+        com.intellij.openapi.util.Disposer.register(project, widgetDisposable)
+
+        // Use LocalTerminalDirectRunner to avoid manual PTY handling
+        val runner = object : org.jetbrains.plugins.terminal.LocalTerminalDirectRunner(project) {
+            // Override configureStartupOptions to inject our OpenCode command and environment
+            override fun configureStartupOptions(baseOptions: org.jetbrains.plugins.terminal.ShellStartupOptions): org.jetbrains.plugins.terminal.ShellStartupOptions {
+                val envs = mutableMapOf<String, String>()
+                envs["_EXTENSION_OPENCODE_PORT"] = port.toString()
+                envs["OPENCODE_CALLER"] = "intellij"
+                if (!isWindows) {
+                    envs["TERM"] = "xterm-256color"
+                }
+                
+                return baseOptions.builder()
+                    .shellCommand(listOf("opencode", "--port", port.toString()))
+                    .envVariables(envs)
+                    .build()
+            }
         }
 
-        val terminalView = TerminalToolWindowManager.getInstance(project)
-        val newWidget = terminalView.createLocalShellWidget(project.basePath, terminalName)
-        widget = newWidget
-        widgetPorts[newWidget] = port
+        // Use startShellTerminalWidget - the modern replacement for deprecated createTerminalWidget
+        val startupOptions = org.jetbrains.plugins.terminal.ShellStartupOptions.Builder()
+            .workingDirectory(project.basePath ?: System.getProperty("user.home"))
+            .build()
+        val terminalWidget = runner.startShellTerminalWidget(widgetDisposable, startupOptions, true)
         
-        newWidget.executeCommand(command)
+        // Convert TerminalWidget to JBTerminalWidget for compatibility
+        val widget = com.intellij.terminal.JBTerminalWidget.asJediTermWidget(terminalWidget)
+            ?: throw IllegalStateException("Failed to create JBTerminalWidget")
 
-        if (initialFile != null) {
-             ApplicationManager.getApplication().executeOnPooledThread {
-                 if (waitForConnection(port)) {
-                     appendPrompt(port, "In $initialFile")
-                 }
-             }
+        widgetPorts[widget] = port
+        
+        ApplicationManager.getApplication().executeOnPooledThread {
+             waitForConnection(port)
+        }
+        
+        return Pair(widget, port)
+    }
+
+    fun openTerminal(initialFile: String? = null) {
+        println("OpenCodeService.openTerminal called: initialFile=$initialFile")
+        
+        // Show the OpenCode tool window (not the standard Terminal window)
+        val openCodeToolWindow = ToolWindowManager.getInstance(project).getToolWindow("OpenCode")
+        if (openCodeToolWindow == null) {
+            println("OpenCode tool window is null - not initialized yet")
+            return
+        }
+        
+        println("Showing OpenCode tool window, isVisible=${openCodeToolWindow.isVisible}")
+        
+        // Activate the tool window (this will trigger initToolWindow if not already done)
+        openCodeToolWindow.activate {
+            println("OpenCode tool window activated")
+            
+            // Wait a bit for initialization to complete if needed
+            ApplicationManager.getApplication().invokeLater {
+                sendFileToOpenCode(initialFile)
+            }
+        }
+    }
+    
+    private fun sendFileToOpenCode(initialFile: String?) {
+        // Find the OpenCode terminal widget (there should be one from initToolWindow)
+        val widget = widgetPorts.keys.firstOrNull()
+        println("Found widget: $widget, widgetPorts size: ${widgetPorts.size}")
+        
+        if (widget != null && initialFile != null) {
+            val port = widgetPorts[widget]
+            println("Sending file to port $port: $initialFile")
+            if (port != null) {
+                appendPromptAsync(port, initialFile)
+            }
+        } else if (initialFile != null) {
+            println("Widget not found, cannot send file: $initialFile")
         }
     }
 
     fun addFilepath(filepath: String) {
-        val iterator = widgetPorts.iterator()
-        var activeWidget: JBTerminalWidget? = null
+        // Find the OpenCode terminal widget
+        val widget = widgetPorts.keys.firstOrNull { it.isDisplayable }
         
-        while (iterator.hasNext()) {
-            val (w, _) = iterator.next()
-            if (!w.isDisplayable) {
-                 iterator.remove()
-                 continue
-            }
-            activeWidget = w
-            break // Just take the first one
-        }
-        
-        if (activeWidget != null) {
-            val port = widgetPorts[activeWidget]
+        if (widget != null) {
+            val port = widgetPorts[widget]
             if (port != null) {
                 appendPromptAsync(port, filepath)
             }
@@ -192,15 +194,6 @@ class OpenCodeService(private val project: Project) {
                 // Ignore
             }
             tries--
-        }
-        return false
-    }
-    
-    private fun javax.swing.JComponent.isAncestorOf(c: javax.swing.JComponent): Boolean {
-        var p = c.parent
-        while (p != null) {
-            if (p == this) return true
-            p = p.parent
         }
         return false
     }

@@ -7,6 +7,7 @@ import com.intellij.openapi.components.service
 import com.opencode.service.OpenCodeService
 import com.opencode.utils.FileUtils
 
+// This action is deprecated and removed from the menu but kept for backward compatibility
 class OpenNewTerminalAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
@@ -15,6 +16,7 @@ class OpenNewTerminalAction : AnAction() {
         
         val fileRef = FileUtils.getActiveFileReference(project, editor, file)
         
-        project.service<OpenCodeService>().openTerminal(newTab = true, initialFile = fileRef)
+        // Just call openTerminal since we don't support multiple tabs anymore
+        project.service<OpenCodeService>().openTerminal(initialFile = fileRef)
     }
 }

@@ -15,6 +15,6 @@ class OpenTerminalAction : AnAction() {
         
         val fileRef = FileUtils.getActiveFileReference(project, editor, file)
         
-        project.service<OpenCodeService>().openTerminal(newTab = false, initialFile = fileRef)
+        project.service<OpenCodeService>().openTerminal(initialFile = fileRef)
     }
 }
