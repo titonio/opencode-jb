@@ -14,7 +14,12 @@ object FileUtils {
             val rootPath = root.path
             val filePath = file.path
             if (filePath.startsWith(rootPath)) {
-                filePath.substring(rootPath.length + 1)
+                // Handle case where filePath equals rootPath (no relative path)
+                if (filePath.length > rootPath.length) {
+                    filePath.substring(rootPath.length + 1)
+                } else {
+                    file.name
+                }
             } else {
                 file.name
             }

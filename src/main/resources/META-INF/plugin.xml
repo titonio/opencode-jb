@@ -13,35 +13,38 @@
     </extensions>
 
     <actions>
-        <action id="OpenCode.OpenTerminal" class="com.opencode.actions.OpenTerminalAction" text="Open OpenCode" description="Open OpenCode terminal">
-            <add-to-group group-id="ToolsMenu" anchor="last"/>
-            <keyboard-shortcut keymap="$default" first-keystroke="ctrl ESCAPE"/>
-            <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta ESCAPE"/>
-        </action>
+        <!-- Editor Context Menu Action -->
         <action id="OpenCode.AddFilepath" class="com.opencode.actions.AddFilepathAction" text="Add Filepath to OpenCode" description="Add current filepath to OpenCode terminal">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt K"/>
             <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta alt K"/>
         </action>
-        <action id="OpenCode.ToggleToolWindow" class="com.opencode.actions.ToggleToolWindowAction" text="Toggle OpenCode Tool Window" description="Show or hide OpenCode tool window">
-            <keyboard-shortcut keymap="$default" first-keystroke="alt shift W"/>
-        </action>
-        <action id="OpenCode.OpenInEditor" class="com.opencode.actions.OpenInEditorAction" text="Open OpenCode in Editor" description="Open OpenCode terminal in editor tab">
-            <add-to-group group-id="ToolsMenu" anchor="last"/>
-        </action>
         
-        <!-- Session Management Actions -->
-        <group id="OpenCode.SessionManagement" text="OpenCode Sessions" description="Manage OpenCode sessions" popup="true">
+        <!-- Main OpenCode Menu Group -->
+        <group id="OpenCode.MainMenu" text="OpenCode" description="OpenCode actions" popup="true">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
             
-            <action id="OpenCode.ListSessions" class="com.opencode.actions.ListSessionsAction" text="List Sessions..." description="Show list of OpenCode sessions">
-                <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift O"/>
-                <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta shift O"/>
+            <action id="OpenCode.OpenTerminal" class="com.opencode.actions.OpenTerminalAction" text="Open OpenCode" description="Open OpenCode terminal">
+                <keyboard-shortcut keymap="$default" first-keystroke="ctrl ESCAPE"/>
+                <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta ESCAPE"/>
             </action>
+            
+            <action id="OpenCode.OpenInEditor" class="com.opencode.actions.OpenInEditorAction" text="Open in Editor" description="Open OpenCode terminal in editor tab"/>
+            
+            <action id="OpenCode.ToggleToolWindow" class="com.opencode.actions.ToggleToolWindowAction" text="Toggle Tool Window" description="Show or hide OpenCode tool window">
+                <keyboard-shortcut keymap="$default" first-keystroke="alt shift W"/>
+            </action>
+            
+            <separator/>
             
             <action id="OpenCode.NewSession" class="com.opencode.actions.NewSessionAction" text="New Session..." description="Create a new OpenCode session">
                 <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift N"/>
                 <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta shift N"/>
+            </action>
+            
+            <action id="OpenCode.ListSessions" class="com.opencode.actions.ListSessionsAction" text="List Sessions..." description="Show list of OpenCode sessions">
+                <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift O"/>
+                <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta shift O"/>
             </action>
         </group>
     </actions>
