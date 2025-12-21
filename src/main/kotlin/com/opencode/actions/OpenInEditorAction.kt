@@ -8,7 +8,7 @@ import com.opencode.editor.OpenCodeVirtualFile
 class OpenInEditorAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
-        val file = OpenCodeVirtualFile()
+        val file = OpenCodeVirtualFile.create()
         FileEditorManager.getInstance(project).openFile(file, true)
     }
 }

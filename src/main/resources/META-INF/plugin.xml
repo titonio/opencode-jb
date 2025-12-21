@@ -29,5 +29,20 @@
         <action id="OpenCode.OpenInEditor" class="com.opencode.actions.OpenInEditorAction" text="Open OpenCode in Editor" description="Open OpenCode terminal in editor tab">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
+        
+        <!-- Session Management Actions -->
+        <group id="OpenCode.SessionManagement" text="OpenCode Sessions" description="Manage OpenCode sessions" popup="true">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            
+            <action id="OpenCode.ListSessions" class="com.opencode.actions.ListSessionsAction" text="List Sessions..." description="Show list of OpenCode sessions">
+                <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift O"/>
+                <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta shift O"/>
+            </action>
+            
+            <action id="OpenCode.NewSession" class="com.opencode.actions.NewSessionAction" text="New Session..." description="Create a new OpenCode session">
+                <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift N"/>
+                <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta shift N"/>
+            </action>
+        </group>
     </actions>
 </idea-plugin>

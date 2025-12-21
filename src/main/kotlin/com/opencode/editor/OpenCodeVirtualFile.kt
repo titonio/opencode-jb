@@ -2,7 +2,9 @@ package com.opencode.editor
 
 import com.intellij.testFramework.LightVirtualFile
 
-class OpenCodeVirtualFile : LightVirtualFile("OpenCode", OpenCodeFileType, "") {
+class OpenCodeVirtualFile private constructor(
+    val sessionId: String? = null
+) : LightVirtualFile("OpenCode", OpenCodeFileType, "") {
     init {
         isWritable = false  // Make it read-only to prevent confusion
     }
@@ -15,4 +17,10 @@ class OpenCodeVirtualFile : LightVirtualFile("OpenCode", OpenCodeFileType, "") {
     
     // Override toString to ensure proper display
     override fun toString(): String = "OpenCode"
+    
+    companion object {
+        fun create(sessionId: String? = null): OpenCodeVirtualFile {
+            return OpenCodeVirtualFile(sessionId)
+        }
+    }
 }
