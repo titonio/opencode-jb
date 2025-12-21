@@ -6,3 +6,4 @@ out
 local.properties
 .intellijPlatform
 .claude/skills/intellij-plugin-builder/references/intellij-sdk-docs
+/docs/refs/opencode/
