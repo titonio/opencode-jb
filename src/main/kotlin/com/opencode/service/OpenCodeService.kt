@@ -4,6 +4,8 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindow
@@ -21,6 +23,8 @@ import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
+
+private val LOG = logger<OpenCodeService>()
 
 @Service(Service.Level.PROJECT)
 class OpenCodeService(private val project: Project) {
@@ -91,7 +95,20 @@ class OpenCodeService(private val project: Project) {
     fun unregisterActiveEditor(file: VirtualFile) {
         if (activeEditorFile == file) {
             activeEditorFile = null
-            stopSharedServerIfUnused()
+            // Delay server shutdown to handle tab drag/split scenarios
+            // where editor is briefly disposed before new one is created
+            scheduleServerShutdownCheck()
+        }
+    }
+    
+    private fun scheduleServerShutdownCheck() {
+        // Wait 1 second before checking if we should stop the server
+        // This handles the case where tab is dragged/split and editor recreated
+        ApplicationManager.getApplication().executeOnPooledThread {
+            Thread.sleep(1000)
+            ApplicationManager.getApplication().invokeLater {
+                stopSharedServerIfUnused()
+            }
         }
     }
     
@@ -99,24 +116,32 @@ class OpenCodeService(private val project: Project) {
      * Get or start the shared OpenCode server.
      */
     fun getOrStartSharedServer(maxRetries: Int = 3): Int? {
+        LOG.info("Getting/starting shared OpenCode server")
+        
         // Check if server is already running
         if (sharedServerPort != null && isServerRunning(sharedServerPort!!)) {
+            LOG.info("Reusing existing shared server on port $sharedServerPort")
             return sharedServerPort
         }
         
         // Try to start server
+        LOG.info("Starting new OpenCode server...")
         repeat(maxRetries) { attempt ->
             try {
                 val port = startServerInternal()
+                LOG.debug("Attempt ${attempt + 1}: Testing server on port $port")
                 if (waitForConnection(port, timeout = 10000)) {
                     sharedServerPort = port
+                    LOG.info("OpenCode server started successfully on port $port")
                     return port
                 }
+                LOG.warn("Server on port $port failed to respond (attempt ${attempt + 1})")
             } catch (e: Exception) {
-                println("Failed to start OpenCode server (attempt ${attempt + 1}): ${e.message}")
+                thisLogger().error("Server start attempt ${attempt + 1} failed", e)
             }
         }
         
+        LOG.error("Failed to start OpenCode server after $maxRetries attempts")
         return null
     }
     
@@ -143,6 +168,12 @@ class OpenCodeService(private val project: Project) {
      * Create a new session via API.
      */
     suspend fun createSession(title: String? = null): String = withContext(Dispatchers.IO) {
+        LOG.info("Creating new OpenCode session")
+        if (LOG.isDebugEnabled) {
+            LOG.debug("  title: $title")
+            LOG.debug("  project: ${project.name}")
+        }
+        
         val port = getOrStartSharedServer()
             ?: throw IOException("Failed to start OpenCode server")
         
@@ -156,6 +187,7 @@ class OpenCodeService(private val project: Project) {
         
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
+                LOG.error("Failed to create session: HTTP ${response.code}")
                 throw IOException("Failed to create session: ${response.code}")
             }
             
@@ -166,6 +198,7 @@ class OpenCodeService(private val project: Project) {
             refreshSessionCache()
             cleanupOldSessions()
             
+            LOG.info("Session created successfully: ${sessionResponse.id}")
             sessionResponse.id
         }
     }
@@ -329,7 +362,11 @@ class OpenCodeService(private val project: Project) {
         }
     }
     
-    private fun isServerRunning(port: Int): Boolean {
+    /**
+     * Check if a server is running on the given port.
+     * Made public so OpenCodeFileEditor can verify restored ports.
+     */
+    fun isServerRunning(port: Int): Boolean {
         return try {
             val request = Request.Builder()
                 .url("http://localhost:$port/session")

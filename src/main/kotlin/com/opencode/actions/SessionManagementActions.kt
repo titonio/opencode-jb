@@ -4,9 +4,9 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditorManager
-import com.opencode.editor.OpenCodeVirtualFile
 import com.opencode.service.OpenCodeService
 import com.opencode.ui.SessionListDialog
+import com.opencode.vfs.OpenCodeFileSystem
 
 /**
  * Action to show the session list dialog and open the selected session
@@ -21,11 +21,9 @@ class ListSessionsAction : AnAction("List OpenCode Sessions") {
         if (dialog.showAndGet()) {
             val selectedSession = dialog.getSelectedSession()
             if (selectedSession != null) {
-                // Close existing OpenCode tab if any
-                closeExistingOpenCodeTab(project)
-                
-                // Open new tab with selected session
-                val virtualFile = OpenCodeVirtualFile.create(selectedSession.id)
+                // Open tab with selected session using custom VFS
+                val virtualFile = OpenCodeFileSystem.getInstance()
+                    .findFileByPath(OpenCodeFileSystem.buildUrl(selectedSession.id))!!
                 FileEditorManager.getInstance(project).openFile(virtualFile, true)
             }
         }
@@ -33,14 +31,6 @@ class ListSessionsAction : AnAction("List OpenCode Sessions") {
     
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabledAndVisible = e.project != null
-    }
-    
-    private fun closeExistingOpenCodeTab(project: com.intellij.openapi.project.Project) {
-        val service = project.service<OpenCodeService>()
-        val activeFile = service.getActiveEditorFile()
-        if (activeFile != null) {
-            FileEditorManager.getInstance(project).closeFile(activeFile)
-        }
     }
 }
 
@@ -78,23 +68,13 @@ class NewSessionAction : AnAction("New OpenCode Session") {
             return
         }
         
-        // Close existing OpenCode tab if any
-        closeExistingOpenCodeTab(project)
-        
-        // Open new tab with new session
-        val virtualFile = OpenCodeVirtualFile.create(sessionId)
+        // Open new tab with new session using custom VFS
+        val virtualFile = OpenCodeFileSystem.getInstance()
+            .findFileByPath(OpenCodeFileSystem.buildUrl(sessionId))!!
         FileEditorManager.getInstance(project).openFile(virtualFile, true)
     }
     
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabledAndVisible = e.project != null
-    }
-    
-    private fun closeExistingOpenCodeTab(project: com.intellij.openapi.project.Project) {
-        val service = project.service<OpenCodeService>()
-        val activeFile = service.getActiveEditorFile()
-        if (activeFile != null) {
-            FileEditorManager.getInstance(project).closeFile(activeFile)
-        }
     }
 }

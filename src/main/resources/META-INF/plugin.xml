@@ -10,6 +10,7 @@
         <toolWindow id="OpenCode" secondary="false" icon="com.opencode.icons.OpenCodeIcons.ToolWindow" anchor="right" factoryClass="com.opencode.toolwindow.OpenCodeToolWindowFactory"/>
         <fileType name="OpenCode" implementationClass="com.opencode.editor.OpenCodeFileType" fieldName="INSTANCE" extensions="opencode"/>
         <fileEditorProvider implementation="com.opencode.editor.OpenCodeFileEditorProvider"/>
+        <virtualFileSystem key="opencode" implementationClass="com.opencode.vfs.OpenCodeFileSystem"/>
     </extensions>
 
     <actions>

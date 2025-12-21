@@ -1,34 +1,28 @@
-
-> Configure project :
-w: file:///home/rute/projgit/opencode-jb/build.gradle.kts:24:9: 'fun instrumentationTools(): Unit' is deprecated. Calling instrumentationTools() is no longer necessary.
 Following 1 plugins could not be created: plugins/fullLine/lib/modules/intellij.fullLine.yaml.jar
-
 > Task :checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :initializeIntellijPlatformPlugin
-> Task :patchPluginXml
-> Task :processResources
-> Task :generateManifest
+> Task :patchPluginXml UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :generateManifest UP-TO-DATE
 > Task :processTestResources
+> Task :compileKotlin
+> Task :compileJava NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :instrumentCode
+> Task :jar
+> Task :instrumentedJar
+> Task :composedJar
+> Task :prepareSandbox
 
-> Task :compileKotlin FAILED
-e: file:///home/rute/projgit/opencode-jb/src/main/kotlin/com/opencode/actions/SessionManagementActions.kt:67:31 Suspend function 'suspend fun createSession(title: String? = ...): String' can only be called from a coroutine or another suspend function.
-e: file:///home/rute/projgit/opencode-jb/src/main/kotlin/com/opencode/actions/SessionManagementActions.kt:73:66 Unresolved reference 'id'.
-e: file:///home/rute/projgit/opencode-jb/src/main/kotlin/com/opencode/editor/OpenCodeFileEditor.kt:39:13 'return' is prohibited here.
-e: file:///home/rute/projgit/opencode-jb/src/main/kotlin/com/opencode/editor/OpenCodeFileEditor.kt:107:44 Unresolved reference 'id'.
-e: file:///home/rute/projgit/opencode-jb/src/main/kotlin/com/opencode/ui/SessionListDialog.kt:96:32 Suspend function 'suspend fun listSessions(forceRefresh: Boolean = ...): List<SessionInfo>' can only be called from a coroutine or another suspend function.
-e: file:///home/rute/projgit/opencode-jb/src/main/kotlin/com/opencode/ui/SessionListDialog.kt:105:31 Suspend function 'suspend fun createSession(title: String? = ...): String' can only be called from a coroutine or another suspend function.
-e: file:///home/rute/projgit/opencode-jb/src/main/kotlin/com/opencode/ui/SessionListDialog.kt:110:65 Unresolved reference 'id'.
-e: file:///home/rute/projgit/opencode-jb/src/main/kotlin/com/opencode/ui/SessionListDialog.kt:136:35 Suspend function 'suspend fun deleteSession(sessionId: String): Boolean' can only be called from a coroutine or another suspend function.
-e: file:///home/rute/projgit/opencode-jb/src/main/kotlin/com/opencode/ui/SessionListDialog.kt:174:43 Suspend function 'suspend fun unshareSession(sessionId: String): Boolean' can only be called from a coroutine or another suspend function.
-e: file:///home/rute/projgit/opencode-jb/src/main/kotlin/com/opencode/ui/SessionListDialog.kt:189:36 Suspend function 'suspend fun shareSession(sessionId: String): String?' can only be called from a coroutine or another suspend function.
-e: file:///home/rute/projgit/opencode-jb/src/main/kotlin/com/opencode/ui/SessionListDialog.kt:232:67 Unresolved reference 'updatedAt'.
+> Task :buildSearchableOptions FAILED
+[0.005s][warning][cds] Archived non-system classes are disabled because the java.system.class.loader property is specified (value = "com.intellij.util.lang.PathClassLoader"). To use archived non-system classes, this property must not be set
+Only one instance of IDEA can be run at a time.
 
 FAILURE: Build failed with an exception.
 
 * What went wrong:
-Execution failed for task ':compileKotlin'.
-> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
-   > Compilation error. See log for more details
+Execution failed for task ':buildSearchableOptions'.
+> Process 'command '/home/rute/.gradle/caches/9.2.1/transforms/8f1aabe38a1ae8be8d76365ab215d416/transformed/idea-2025.3/jbr/bin/java'' finished with non-zero exit value 1
 
 * Try:
 > Run with --stacktrace option to get the stack trace.
@@ -36,5 +30,5 @@ Execution failed for task ':compileKotlin'.
 > Run with --scan to generate a Build Scan (powered by Develocity).
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 20s
-6 actionable tasks: 6 executed
+BUILD FAILED in 9s
+12 actionable tasks: 9 executed, 3 up-to-date
