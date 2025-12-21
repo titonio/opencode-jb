@@ -1,0 +1,64 @@
+[
+  {
+    "id": "session-1",
+    "title": "Main Development Session",
+    "directory": "/home/user/projects/opencode",
+    "projectID": "project-main",
+    "time": {
+      "created": 1703001600000,
+      "updated": 1703088000000,
+      "archived": null
+    },
+    "share": null
+  },
+  {
+    "id": "session-2",
+    "title": "Bug Fix Session",
+    "directory": "/home/user/projects/opencode",
+    "projectID": "project-main",
+    "time": {
+      "created": 1703002600000,
+      "updated": 1703087000000,
+      "archived": null
+    },
+    "share": {
+      "url": "https://opencode.ai/share/abc123"
+    }
+  },
+  {
+    "id": "session-3",
+    "title": "Feature Development",
+    "directory": "/home/user/projects/opencode",
+    "projectID": "project-main",
+    "time": {
+      "created": 1703003600000,
+      "updated": 1703086000000,
+      "archived": null
+    },
+    "share": null
+  },
+  {
+    "id": "session-4",
+    "title": "Refactoring Session",
+    "directory": "/home/user/projects/opencode",
+    "projectID": "project-main",
+    "time": {
+      "created": 1703004600000,
+      "updated": 1703085000000,
+      "archived": null
+    },
+    "share": null
+  },
+  {
+    "id": "session-5",
+    "title": "Testing Session",
+    "directory": "/home/user/projects/opencode",
+    "projectID": "project-main",
+    "time": {
+      "created": 1703005600000,
+      "updated": 1703084000000,
+      "archived": null
+    },
+    "share": null
+  }
+]
