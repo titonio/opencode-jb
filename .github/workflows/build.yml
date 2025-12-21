@@ -1,0 +1,133 @@
+# GitHub Actions Workflow for building and verifying the OpenCode IntelliJ plugin
+# Triggers on push to main branch only
+# Produces distributable plugin ZIP with test and verification reports
+
+name: Build
+on:
+  push:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.properties.outputs.version }}
+      artifact: ${{ steps.properties.outputs.artifact }}
+    steps:
+      - name: Maximize Build Space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          large-packages: false
+
+      - name: Fetch Sources
+        uses: actions/checkout@v5
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Export Properties
+        id: properties
+        shell: bash
+        run: |
+          VERSION=$(./gradlew properties --property version --quiet --console=plain | tail -n 1 | cut -f2- -d ' ')
+          ARTIFACT="OpenCode-${VERSION}-build-${{ github.run_number }}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "artifact=$ARTIFACT" >> $GITHUB_OUTPUT
+
+      - name: Build Plugin
+        run: ./gradlew buildPlugin
+
+      - name: Upload Plugin Artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ steps.properties.outputs.artifact }}
+          path: ./build/distributions/*.zip
+
+  test:
+    name: Test
+    needs: [ build ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Maximize Build Space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          large-packages: false
+
+      - name: Fetch Sources
+        uses: actions/checkout@v5
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: true
+
+      - name: Run Tests
+        run: ./gradlew check
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: test-results-build-${{ github.run_number }}
+          path: ${{ github.workspace }}/build/reports/tests
+
+      - name: Upload Coverage Reports
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-reports-build-${{ github.run_number }}
+          path: ${{ github.workspace }}/build/reports/kover
+
+  verify:
+    name: Verify Plugin
+    needs: [ build ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Maximize Build Space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          large-packages: false
+
+      - name: Fetch Sources
+        uses: actions/checkout@v5
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: true
+
+      - name: Run Plugin Verification
+        run: ./gradlew verifyPlugin
+
+      - name: Upload Verification Reports
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: verification-reports-build-${{ github.run_number }}
+          path: ${{ github.workspace }}/build/reports/pluginVerifier

@@ -5,7 +5,7 @@
   
   <p><strong>AI-powered coding assistant for JetBrains IDEs</strong></p>
 
-  [![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/yourusername/opencode-jb)
+  [![Build](https://github.com/titonio/opencode-jb/workflows/Build/badge.svg)](https://github.com/titonio/opencode-jb/actions)
   [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/yourusername/opencode-jb/releases)
   [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
   [![Platform](https://img.shields.io/badge/platform-IntelliJ%20IDEA%202025.3-orange.svg)](https://www.jetbrains.com/idea/)
