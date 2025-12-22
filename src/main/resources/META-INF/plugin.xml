@@ -2,6 +2,11 @@
     <id>com.opencode</id>
     <name>OpenCode</name>
     <vendor>opencode</vendor>
+    <description><![CDATA[
+OpenCode is an AI-powered coding assistant that integrates directly into your IDE. 
+It provides intelligent code suggestions, refactoring assistance, and automated development workflows 
+through an intuitive terminal interface and tool window.
+    ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>org.jetbrains.plugins.terminal</depends>
