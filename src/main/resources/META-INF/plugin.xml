@@ -16,6 +16,10 @@ through an intuitive terminal interface and tool window.
         <fileType name="OpenCode" implementationClass="com.opencode.editor.OpenCodeFileType" fieldName="INSTANCE" extensions="opencode"/>
         <fileEditorProvider implementation="com.opencode.editor.OpenCodeFileEditorProvider"/>
         <virtualFileSystem key="opencode" implementationClass="com.opencode.vfs.OpenCodeFileSystem"/>
+        
+        <!-- Settings -->
+        <applicationConfigurable parentId="tools" instance="com.opencode.settings.OpenCodeConfigurable" 
+                                id="com.opencode.settings.OpenCodeConfigurable" displayName="OpenCode"/>
     </extensions>
 
     <actions>

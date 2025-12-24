@@ -82,6 +82,8 @@ koverReport {
     filters {
         excludes {
             classes("*.icons.*")
+            classes("*.toolwindow.OpenCodeToolWindowPanel")
+            classes("*.editor.OpenCodeEditorPanel")
         }
     }
     

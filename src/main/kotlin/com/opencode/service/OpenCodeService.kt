@@ -11,7 +11,6 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.terminal.JBTerminalWidget
-import com.intellij.util.ui.UIUtil
 import com.opencode.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -398,14 +397,13 @@ class OpenCodeService(private val project: Project) {
     }
     
     fun initToolWindow(toolWindow: ToolWindow) {
-        println("OpenCodeService.initToolWindow called")
+        LOG.info("OpenCodeService.initToolWindow called")
         val contentFactory = com.intellij.ui.content.ContentFactory.getInstance()
         
         toolWindow.contentManager.removeAllContents(true)
 
         ApplicationManager.getApplication().invokeLater {
-            val panel = com.intellij.openapi.ui.SimpleToolWindowPanel(true, true)
-            panel.background = UIUtil.getPanelBackground()
+            val panel = com.opencode.toolwindow.OpenCodeToolWindowPanel(project, this)
             val content = contentFactory.createContent(panel, "", false)
             toolWindow.contentManager.addContent(content)
             
@@ -413,11 +411,7 @@ class OpenCodeService(private val project: Project) {
             toolWindow.isShowStripeButton = true
             toolWindow.setType(com.intellij.openapi.wm.ToolWindowType.SLIDING, null)
             
-            println("Creating terminal widget...")
-            val (widget, port) = createTerminalWidget()
-            println("Created terminal widget on port $port")
-            
-            panel.setContent(widget.component)
+            LOG.info("OpenCode tool window initialized with restart-capable panel")
         }
     }
 
