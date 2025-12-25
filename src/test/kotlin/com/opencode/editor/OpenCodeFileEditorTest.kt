@@ -177,7 +177,7 @@ class OpenCodeFileEditorTest {
         runBlocking {
             whenever(mockService.createSession(null)).thenReturn(newSessionId)
         }
-        whenever(mockService.getOrStartSharedServer()).thenReturn(8080)
+        runBlocking { whenever(mockService.getOrStartSharedServer()).thenReturn(8080) }
         
         // Act
         editor.selectNotify()
@@ -186,7 +186,7 @@ class OpenCodeFileEditorTest {
         // Would verify widget is initialized
         // Would verify server is started
         // Would verify session is created
-        verify(mockService).getOrStartSharedServer()
+        runBlocking { verify(mockService).getOrStartSharedServer() }
     }
     
     @Test
@@ -194,7 +194,7 @@ class OpenCodeFileEditorTest {
     fun `test selectNotify only initializes once`() {
         // Arrange
         val editor = OpenCodeFileEditor(mockProject, mockFile)
-        whenever(mockService.getOrStartSharedServer()).thenReturn(8080)
+        runBlocking { whenever(mockService.getOrStartSharedServer()).thenReturn(8080) }
         runBlocking {
             whenever(mockService.createSession(null)).thenReturn("session-1")
         }
@@ -206,7 +206,8 @@ class OpenCodeFileEditorTest {
         
         // Assert
         // Should only initialize once despite multiple calls
-        verify(mockService, times(1)).getOrStartSharedServer()
+        // Note: Verification of suspend function requires runBlocking
+        runBlocking { verify(mockService, times(1)).getOrStartSharedServer() }
     }
     
     @Test
@@ -240,7 +241,7 @@ class OpenCodeFileEditorTest {
     fun `test getPreferredFocusedComponent returns widget component when initialized`() {
         // Arrange
         val editor = OpenCodeFileEditor(mockProject, mockFile)
-        whenever(mockService.getOrStartSharedServer()).thenReturn(8080)
+        runBlocking { whenever(mockService.getOrStartSharedServer()).thenReturn(8080) }
         runBlocking {
             whenever(mockService.createSession(null)).thenReturn("session-abc")
         }
@@ -261,7 +262,7 @@ class OpenCodeFileEditorTest {
     fun `test getState returns OpenCodeEditorState with current values`() {
         // Arrange
         val editor = OpenCodeFileEditor(mockProject, mockFile)
-        whenever(mockService.getOrStartSharedServer()).thenReturn(9000)
+        runBlocking { whenever(mockService.getOrStartSharedServer()).thenReturn(9000) }
         runBlocking {
             whenever(mockService.createSession(null)).thenReturn("state-session-123")
         }
@@ -363,7 +364,7 @@ class OpenCodeFileEditorTest {
     @Disabled("OpenCodeFileEditor requires IntelliJ platform infrastructure")
     fun `test initialization starts server when needed`() = runBlocking {
         // Arrange
-        whenever(mockService.getOrStartSharedServer()).thenReturn(8080)
+        runBlocking { whenever(mockService.getOrStartSharedServer()).thenReturn(8080) }
         whenever(mockService.createSession(null)).thenReturn("new-session")
         
         val editor = OpenCodeFileEditor(mockProject, mockFile)
@@ -372,7 +373,7 @@ class OpenCodeFileEditorTest {
         editor.selectNotify()
         
         // Assert
-        verify(mockService).getOrStartSharedServer()
+        runBlocking { verify(mockService).getOrStartSharedServer() }
     }
     
     @Test
@@ -402,7 +403,7 @@ class OpenCodeFileEditorTest {
         // Arrange
         val restoredState = OpenCodeEditorState("old-session", 5050)
         whenever(mockService.isServerRunning(5050)).thenReturn(false)
-        whenever(mockService.getOrStartSharedServer()).thenReturn(6060)
+        runBlocking { whenever(mockService.getOrStartSharedServer()).thenReturn(6060) }
         whenever(mockService.createSession(null)).thenReturn("new-session")
         
         val editor = OpenCodeFileEditor(mockProject, mockFile)
@@ -413,7 +414,7 @@ class OpenCodeFileEditorTest {
         
         // Assert
         verify(mockService).isServerRunning(5050)
-        verify(mockService).getOrStartSharedServer()
+        runBlocking { verify(mockService).getOrStartSharedServer() }
     }
     
     @Test
@@ -428,7 +429,7 @@ class OpenCodeFileEditorTest {
         editor.selectNotify()
         
         // Assert
-        verify(mockService).getOrStartSharedServer()
+        runBlocking { verify(mockService).getOrStartSharedServer() }
         // Would verify error dialog shown
     }
     

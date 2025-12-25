@@ -37,6 +37,7 @@ dependencies {
     // Testing dependencies
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+    testImplementation("org.junit.vintage:junit-vintage-engine:5.10.0") // Support for JUnit 3/4 tests (BasePlatformTestCase)
     testImplementation("org.mockito:mockito-core:5.8.0")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
@@ -67,6 +68,10 @@ intellijPlatform {
 
 tasks.test {
     useJUnitPlatform()
+    // Ensure the kover temp directory exists
+    doFirst {
+        file("${layout.buildDirectory.get()}/tmp/test").mkdirs()
+    }
 }
 
 koverReport {

@@ -26,6 +26,7 @@ class OpenCodeSettings : PersistentStateComponent<OpenCodeSettings.State> {
     }
     
     companion object {
+        @JvmStatic
         fun getInstance(): OpenCodeSettings = service<OpenCodeSettings>()
     }
 }

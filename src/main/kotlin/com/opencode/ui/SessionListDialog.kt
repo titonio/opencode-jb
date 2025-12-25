@@ -6,6 +6,10 @@ import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBScrollPane
 import com.opencode.model.SessionInfo
 import com.opencode.service.OpenCodeService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
@@ -16,18 +20,22 @@ import javax.swing.*
 
 class SessionListDialog(
     private val project: Project,
-    private val service: OpenCodeService
-) : DialogWrapper(project) {
+    service: OpenCodeService
+) : DialogWrapper(project), SessionListViewModel.ViewCallback {
     
     private val sessionListModel = DefaultListModel<SessionInfo>()
     private val sessionList = JBList(sessionListModel)
-    private var selectedSession: SessionInfo? = null
+    
+    // ViewModel handles all business logic
+    private val viewModelScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val viewModel = SessionListViewModel(service, viewModelScope)
     
     init {
         title = "OpenCode Sessions"
         setOKButtonText("Open Session")
+        viewModel.setCallback(this)
         init()
-        loadSessions()
+        viewModel.loadSessions()
     }
     
     override fun createCenterPanel(): JComponent {
@@ -38,8 +46,7 @@ class SessionListDialog(
         sessionList.cellRenderer = SessionCellRenderer()
         sessionList.selectionMode = ListSelectionModel.SINGLE_SELECTION
         sessionList.addListSelectionListener {
-            selectedSession = sessionList.selectedValue
-            isOKActionEnabled = selectedSession != null
+            viewModel.selectSession(sessionList.selectedValue)
         }
         
         // Scroll pane
@@ -59,7 +66,7 @@ class SessionListDialog(
                 JOptionPane.PLAIN_MESSAGE
             )
             if (title != null) { // User didn't cancel
-                createNewSession(if (title.isBlank()) null else title)
+                viewModel.createSession(if (title.isBlank()) null else title)
             }
         }
         
@@ -75,7 +82,7 @@ class SessionListDialog(
         
         val refreshButton = JButton("Refresh")
         refreshButton.addActionListener {
-            loadSessions()
+            viewModel.loadSessions()
         }
         
         buttonPanel.add(newSessionButton)
@@ -91,68 +98,93 @@ class SessionListDialog(
         return panel
     }
     
-    private fun loadSessions() {
-        sessionListModel.clear()
-        val sessions = kotlinx.coroutines.runBlocking {
-            service.listSessions(forceRefresh = true)
-        }
-        sessions.forEach { sessionListModel.addElement(it) }
-        
-        if (sessionListModel.isEmpty) {
-            isOKActionEnabled = false
+    override fun doCancelAction() {
+        super.doCancelAction()
+        viewModelScope.cancel()
+    }
+    
+    override fun doOKAction() {
+        super.doOKAction()
+        viewModelScope.cancel()
+    }
+    
+    // ========== ViewCallback Implementation ==========
+    
+    override fun onSessionsLoaded(sessions: List<SessionInfo>) {
+        SwingUtilities.invokeLater {
+            sessionListModel.clear()
+            sessions.forEach { sessionListModel.addElement(it) }
+            isOKActionEnabled = !sessionListModel.isEmpty
         }
     }
     
-    private fun createNewSession(title: String?) {
-        val sessionId = kotlinx.coroutines.runBlocking {
-            service.createSession(title)
-        }
-        loadSessions()
-        // Select the newly created session
-        val index = (0 until sessionListModel.size()).find { 
-            sessionListModel.getElementAt(it).id == sessionId
-        }
-        if (index != null) {
-            sessionList.selectedIndex = index
+    override fun onSessionSelected(session: SessionInfo?) {
+        SwingUtilities.invokeLater {
+            isOKActionEnabled = session != null
         }
     }
+    
+    override fun onError(message: String) {
+        SwingUtilities.invokeLater {
+            JOptionPane.showMessageDialog(
+                contentPane,
+                message,
+                "Error",
+                JOptionPane.ERROR_MESSAGE
+            )
+        }
+    }
+    
+    override fun onSuccess(message: String) {
+        SwingUtilities.invokeLater {
+            // Could show a subtle notification, for now we just silently succeed
+            // to avoid too many popups for the user
+        }
+    }
+    
+    override fun onShareUrlGenerated(url: String) {
+        SwingUtilities.invokeLater {
+            // Copy to clipboard
+            val clipboard = java.awt.Toolkit.getDefaultToolkit().systemClipboard
+            val selection = java.awt.datatransfer.StringSelection(url)
+            clipboard.setContents(selection, selection)
+            
+            JOptionPane.showMessageDialog(
+                contentPane,
+                "Session shared! URL copied to clipboard:\n$url",
+                "Share Successful",
+                JOptionPane.INFORMATION_MESSAGE
+            )
+        }
+    }
+    
+    // ========== UI Action Handlers ==========
     
     private fun deleteSelectedSession() {
         val session = sessionList.selectedValue ?: return
         
         val confirm = JOptionPane.showConfirmDialog(
             contentPane,
-            "Delete session \"${session.title ?: session.id}\"?",
+            "Delete session \"${viewModel.getSessionDisplayTitle(session)}\"?",
             "Confirm Delete",
             JOptionPane.YES_NO_OPTION
         )
         
         if (confirm == JOptionPane.YES_OPTION) {
-            val success = kotlinx.coroutines.runBlocking {
-                service.deleteSession(session.id)
-            }
-            if (success) {
-                loadSessions()
-            } else {
-                JOptionPane.showMessageDialog(
-                    contentPane,
-                    "Failed to delete session.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE
-                )
-            }
+            viewModel.deleteSession(session)
         }
     }
     
     private fun shareSelectedSession() {
         val session = sessionList.selectedValue ?: return
         
-        if (session.share != null) {
+        if (viewModel.isSessionShared(session)) {
             // Already shared, show URL with option to unshare
+            val shareUrl = viewModel.getShareUrl(session)!!
             val options = arrayOf("Copy URL", "Unshare", "Cancel")
             val choice = JOptionPane.showOptionDialog(
                 contentPane,
-                "Share URL: ${session.share.url}",
+                "Share URL: $shareUrl",
                 "Session Shared",
                 JOptionPane.DEFAULT_OPTION,
                 JOptionPane.INFORMATION_MESSAGE,
@@ -164,53 +196,20 @@ class SessionListDialog(
             when (choice) {
                 0 -> { // Copy URL
                     val clipboard = java.awt.Toolkit.getDefaultToolkit().systemClipboard
-                    val selection = java.awt.datatransfer.StringSelection(session.share.url)
+                    val selection = java.awt.datatransfer.StringSelection(shareUrl)
                     clipboard.setContents(selection, selection)
                 }
                 1 -> { // Unshare
-                    val success = kotlinx.coroutines.runBlocking {
-                        service.unshareSession(session.id)
-                    }
-                    if (success) {
-                        loadSessions()
-                    } else {
-                        JOptionPane.showMessageDialog(
-                            contentPane,
-                            "Failed to unshare session.",
-                            "Error",
-                            JOptionPane.ERROR_MESSAGE
-                        )
-                    }
+                    viewModel.unshareSession(session)
                 }
             }
         } else {
             // Not shared, share it
-            val shareUrl = kotlinx.coroutines.runBlocking {
-                service.shareSession(session.id)
-            }
-            if (shareUrl != null) {
-                loadSessions()
-                val clipboard = java.awt.Toolkit.getDefaultToolkit().systemClipboard
-                val selection = java.awt.datatransfer.StringSelection(shareUrl)
-                clipboard.setContents(selection, selection)
-                JOptionPane.showMessageDialog(
-                    contentPane,
-                    "Session shared! URL copied to clipboard:\n$shareUrl",
-                    "Share Successful",
-                    JOptionPane.INFORMATION_MESSAGE
-                )
-            } else {
-                JOptionPane.showMessageDialog(
-                    contentPane,
-                    "Failed to share session.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE
-                )
-            }
+            viewModel.shareSession(session)
         }
     }
     
-    fun getSelectedSession(): SessionInfo? = selectedSession
+    fun getSelectedSession(): SessionInfo? = viewModel.getSelectedSession()
     
     private class SessionCellRenderer : DefaultListCellRenderer() {
         private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
@@ -227,7 +226,7 @@ class SessionListDialog(
             
             if (value is SessionInfo) {
                 val shareIcon = if (value.share != null) " 🔗" else ""
-                val title = value.title ?: "Untitled"
+                val title = value.title
                 val id = value.id.take(12) + "..."
                 val updateTime = try {
                     val instant = Instant.ofEpochMilli(value.time.updated)

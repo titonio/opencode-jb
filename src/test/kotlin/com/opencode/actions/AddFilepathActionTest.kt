@@ -111,4 +111,20 @@ class AddFilepathActionTest {
         // Verify the action is an AnAction instance
         assertTrue(action is com.intellij.openapi.actionSystem.AnAction)
     }
+    
+    // ========== Edge Case Tests ==========
+    
+    @Test
+    fun `testActionPerformed_WithNullVirtualFile_ReturnsEarlyFromFileUtils`() {
+        // Setup event with project and editor but null file
+        whenever(mockEvent.project).thenReturn(mockProject)
+        whenever(mockEvent.getData(CommonDataKeys.EDITOR)).thenReturn(mockEditor)
+        whenever(mockEvent.getData(CommonDataKeys.VIRTUAL_FILE)).thenReturn(null)
+        
+        // FileUtils.getActiveFileReference returns null when file is null (line 10 of FileUtils)
+        // Action handles this gracefully by checking if fileRef != null before calling service
+        assertDoesNotThrow {
+            action.actionPerformed(mockEvent)
+        }
+    }
 }

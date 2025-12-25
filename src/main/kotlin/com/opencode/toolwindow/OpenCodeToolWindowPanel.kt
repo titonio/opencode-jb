@@ -9,6 +9,11 @@ import com.intellij.terminal.JBTerminalWidget
 import com.intellij.util.ui.UIUtil
 import com.opencode.service.OpenCodeService
 import com.opencode.settings.OpenCodeSettings
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import java.awt.BorderLayout
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
@@ -17,44 +22,53 @@ import java.util.concurrent.Future
 import javax.swing.JButton
 import javax.swing.JLabel
 import javax.swing.JPanel
-import kotlin.random.Random
 
 private val LOG = logger<OpenCodeToolWindowPanel>()
 
 class OpenCodeToolWindowPanel(
     private val project: Project,
     private val service: OpenCodeService
-) : JPanel(BorderLayout()), Disposable {
+) : JPanel(BorderLayout()), Disposable, OpenCodeToolWindowViewModel.ViewCallback {
     
-    private enum class State {
-        INITIALIZING, RUNNING, EXITED, RESTARTING
-    }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
-    @Volatile
-    private var currentState: State = State.INITIALIZING
+    private val viewModel = OpenCodeToolWindowViewModel(
+        service = service,
+        scope = scope
+    )
     
     private var widget: JBTerminalWidget? = null
     private var widgetDisposable: Disposable? = null
     private var monitoringJob: Future<*>? = null
-    private var currentPort: Int? = null
-    
-    @Volatile
-    private var isMonitoring = false
     
     init {
         background = UIUtil.getPanelBackground()
-        startTerminal()
+        viewModel.setCallback(this)
+        viewModel.initialize()
     }
     
-    private fun startTerminal() {
-        LOG.info("Starting OpenCode terminal in tool window")
-        currentState = State.INITIALIZING
+    // ============================================
+    // ViewCallback Implementation
+    // ============================================
+    
+    override fun onStateChanged(state: OpenCodeToolWindowViewModel.State) {
+        LOG.debug("State changed to: $state")
+    }
+    
+    override fun onPortReady(port: Int) {
+        LOG.info("Port ready: port=$port")
         
         ApplicationManager.getApplication().invokeLater {
+            // Check if panel has been disposed before creating terminal
+            if (Disposer.isDisposed(this)) {
+                LOG.warn("Panel already disposed, skipping terminal widget creation")
+                return@invokeLater
+            }
+            
             try {
-                val (newWidget, port) = createTerminalWidget()
+                // Create terminal widget
+                val newWidget = createTerminalWidget(port)
                 widget = newWidget
-                currentPort = port
                 
                 // Register widget with service
                 service.registerWidget(newWidget, port)
@@ -66,19 +80,47 @@ class OpenCodeToolWindowPanel(
                 repaint()
                 
                 // Start monitoring
-                currentState = State.RUNNING
                 startProcessMonitoring()
                 
-                LOG.info("OpenCode terminal started successfully on port $port")
+                LOG.info("OpenCode terminal initialized successfully - port=$port")
             } catch (e: Exception) {
-                LOG.error("Failed to start OpenCode terminal", e)
+                LOG.error("Failed to create terminal widget", e)
                 showErrorUI("Failed to start OpenCode: ${e.message}")
             }
         }
     }
     
-    private fun createTerminalWidget(): Pair<JBTerminalWidget, Int> {
-        val port = Random.nextInt(16384, 65536)
+    override fun onError(message: String) {
+        LOG.error("ViewModel error: $message")
+        showErrorUI(message)
+    }
+    
+    override fun onProcessExited() {
+        LOG.info("Process exited notification received")
+        
+        // Cleanup old widget
+        cleanupWidget()
+        
+        val settings = OpenCodeSettings.getInstance()
+        if (!settings.state.autoRestartOnExit) {
+            // Only show restart UI if auto-restart is disabled
+            // (auto-restart will be handled by ViewModel)
+            showRestartUI()
+        }
+    }
+    
+    // ============================================
+    // Terminal Widget Creation and Management
+    // ============================================
+    
+    private fun createTerminalWidget(port: Int): JBTerminalWidget {
+        LOG.info("Creating terminal widget for tool window - port=$port")
+        
+        // Ensure panel is not disposed before creating widget
+        if (Disposer.isDisposed(this)) {
+            throw IllegalStateException("Cannot create terminal widget - panel already disposed")
+        }
+        
         val isWindows = System.getProperty("os.name").lowercase().contains("win")
         
         val widgetDisposable = Disposable { }
@@ -111,16 +153,16 @@ class OpenCodeToolWindowPanel(
         val jbWidget = JBTerminalWidget.asJediTermWidget(terminalWidget)
             ?: throw IllegalStateException("Failed to create JBTerminalWidget")
         
-        return Pair(jbWidget, port)
+        LOG.info("JBTerminalWidget created")
+        
+        return jbWidget
     }
     
     private fun startProcessMonitoring() {
-        isMonitoring = true
-        
         monitoringJob = ApplicationManager.getApplication().executeOnPooledThread {
-            LOG.debug("Process monitoring thread started")
+            LOG.debug("Process monitoring thread started for tool window panel")
             
-            while (isMonitoring && currentState == State.RUNNING) {
+            while (viewModel.getState() == OpenCodeToolWindowViewModel.State.RUNNING) {
                 Thread.sleep(1000)
                 
                 val isAlive = checkIfTerminalAlive()
@@ -135,7 +177,7 @@ class OpenCodeToolWindowPanel(
                 }
             }
             
-            LOG.debug("Process monitoring thread stopped")
+            LOG.debug("Process monitoring thread stopped for tool window panel")
         }
     }
     
@@ -154,34 +196,28 @@ class OpenCodeToolWindowPanel(
             LOG.warn("Failed to check TTY connector status", e)
         }
         
-        // Strategy 2: Fallback - check if port is still responding
-        val port = currentPort ?: return false
-        val portAlive = service.isServerRunning(port)
-        LOG.debug("Port health check: port=$port, alive=$portAlive")
-        return portAlive
+        // Strategy 2: Fallback - delegate to ViewModel for server health check
+        scope.launch {
+            viewModel.checkServerHealth()
+        }
+        
+        // Return based on server port availability
+        return viewModel.getCurrentPort() != null
     }
     
     private fun handleProcessExit() {
-        if (currentState != State.RUNNING) {
-            LOG.debug("handleProcessExit called but state is $currentState, ignoring")
+        if (viewModel.getState() != OpenCodeToolWindowViewModel.State.RUNNING) {
+            LOG.debug("handleProcessExit called but state is ${viewModel.getState()}, ignoring")
             return
         }
         
-        currentState = State.EXITED
-        isMonitoring = false
-        
-        // Cleanup old widget
-        cleanupWidget()
-        
         val settings = OpenCodeSettings.getInstance()
-        if (settings.state.autoRestartOnExit) {
-            LOG.info("Auto-restart enabled, restarting terminal")
-            restartTerminal()
-        } else {
-            LOG.info("Auto-restart disabled, showing restart UI")
-            showRestartUI()
-        }
+        viewModel.handleProcessExit(settings.state.autoRestartOnExit)
     }
+    
+    // ============================================
+    // UI Display Methods
+    // ============================================
     
     private fun showRestartUI() {
         ApplicationManager.getApplication().invokeLater {
@@ -213,7 +249,7 @@ class OpenCodeToolWindowPanel(
             revalidate()
             repaint()
             
-            LOG.info("Restart UI displayed")
+            LOG.info("Restart UI displayed for tool window panel")
         }
     }
     
@@ -240,24 +276,18 @@ class OpenCodeToolWindowPanel(
     }
     
     private fun restartTerminal() {
-        if (currentState == State.RESTARTING) {
-            LOG.warn("Restart already in progress, ignoring duplicate request")
-            return
-        }
-        
-        LOG.info("Restarting OpenCode terminal (manual request)")
-        currentState = State.RESTARTING
+        LOG.info("Restarting OpenCode terminal (user request)")
         
         // Stop monitoring
-        isMonitoring = false
+        viewModel.stopProcessMonitoring()
         monitoringJob?.cancel(true)
         monitoringJob = null
         
         // Cleanup old widget
         cleanupWidget()
         
-        // Start new terminal
-        startTerminal()
+        // Delegate restart to ViewModel
+        viewModel.restart()
     }
     
     private fun cleanupWidget() {
@@ -272,19 +302,23 @@ class OpenCodeToolWindowPanel(
             }
         }
         widgetDisposable = null
-        
-        currentPort = null
     }
     
     override fun dispose() {
         LOG.info("OpenCodeToolWindowPanel disposed")
         
         // Stop monitoring
-        isMonitoring = false
+        viewModel.stopProcessMonitoring()
         monitoringJob?.cancel(true)
         monitoringJob = null
         
         // Cleanup widget
         cleanupWidget()
+        
+        // Dispose ViewModel
+        viewModel.dispose()
+        
+        // Cancel coroutine scope
+        scope.cancel()
     }
 }

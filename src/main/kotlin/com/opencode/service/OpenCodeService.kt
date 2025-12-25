@@ -26,7 +26,16 @@ import kotlin.random.Random
 private val LOG = logger<OpenCodeService>()
 
 @Service(Service.Level.PROJECT)
-class OpenCodeService(private val project: Project) {
+class OpenCodeService(
+    private val project: Project
+) {
+    
+    // Secondary constructor for testing - allows injection of ServerManager
+    internal constructor(project: Project, serverManager: ServerManager?) : this(project) {
+        if (serverManager != null) {
+            this.serverManagerOverride = serverManager
+        }
+    }
     
     private val client by lazy {
         OkHttpClient.Builder()
@@ -38,9 +47,16 @@ class OpenCodeService(private val project: Project) {
     private val gson = Gson()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     
-    // Shared server state
-    private var sharedServerPort: Int? = null
-    private var sharedServerProcess: Process? = null
+    // Allow tests to override the server manager
+    private var serverManagerOverride: ServerManager? = null
+    
+    // Server manager - lazily initialized
+    private val server: ServerManager by lazy {
+        serverManagerOverride ?: DefaultServerManager(
+            workingDirectory = File(project.basePath ?: System.getProperty("user.home")),
+            client = client
+        )
+    }
     
     // Session cache
     private val sessionCache = mutableMapOf<String, SessionInfo>()
@@ -114,52 +130,13 @@ class OpenCodeService(private val project: Project) {
     /**
      * Get or start the shared OpenCode server.
      */
-    fun getOrStartSharedServer(maxRetries: Int = 3): Int? {
-        LOG.info("Getting/starting shared OpenCode server")
-        
-        // Check if server is already running
-        if (sharedServerPort != null && isServerRunning(sharedServerPort!!)) {
-            LOG.info("Reusing existing shared server on port $sharedServerPort")
-            return sharedServerPort
-        }
-        
-        // Try to start server
-        LOG.info("Starting new OpenCode server...")
-        repeat(maxRetries) { attempt ->
-            try {
-                val port = startServerInternal()
-                LOG.debug("Attempt ${attempt + 1}: Testing server on port $port")
-                if (waitForConnection(port, timeout = 10000)) {
-                    sharedServerPort = port
-                    LOG.info("OpenCode server started successfully on port $port")
-                    return port
-                }
-                LOG.warn("Server on port $port failed to respond (attempt ${attempt + 1})")
-            } catch (e: Exception) {
-                thisLogger().error("Server start attempt ${attempt + 1} failed", e)
-            }
-        }
-        
-        LOG.error("Failed to start OpenCode server after $maxRetries attempts")
-        return null
-    }
-    
-    private fun startServerInternal(): Int {
-        val port = Random.nextInt(16384, 65536)
-        val processBuilder = ProcessBuilder()
-            .command("opencode", "serve", "--port", port.toString(), "--hostname", "127.0.0.1")
-            .directory(File(project.basePath ?: System.getProperty("user.home")))
-            .redirectErrorStream(true)
-        
-        sharedServerProcess = processBuilder.start()
-        return port
+    suspend fun getOrStartSharedServer(): Int? {
+        return server.getOrStartServer()
     }
     
     private fun stopSharedServerIfUnused() {
         if (activeEditorFile == null) {
-            sharedServerProcess?.destroy()
-            sharedServerProcess = null
-            sharedServerPort = null
+            server.stopServer()
         }
     }
     
@@ -215,7 +192,7 @@ class OpenCodeService(private val project: Project) {
     }
     
     private suspend fun refreshSessionCache(): List<SessionInfo> = withContext(Dispatchers.IO) {
-        val port = sharedServerPort ?: return@withContext emptyList()
+        val port = server.getServerPort() ?: return@withContext emptyList()
         
         val request = Request.Builder()
             .url("http://localhost:$port/session?directory=${project.basePath}")
@@ -241,7 +218,7 @@ class OpenCodeService(private val project: Project) {
      * Get a specific session by ID.
      */
     suspend fun getSession(sessionId: String): SessionInfo? = withContext(Dispatchers.IO) {
-        val port = sharedServerPort ?: return@withContext null
+        val port = server.getServerPort() ?: return@withContext null
         
         val request = Request.Builder()
             .url("http://localhost:$port/session/$sessionId?directory=${project.basePath}")
@@ -264,7 +241,7 @@ class OpenCodeService(private val project: Project) {
      * Delete a session via API.
      */
     suspend fun deleteSession(sessionId: String): Boolean = withContext(Dispatchers.IO) {
-        val port = sharedServerPort ?: return@withContext false
+        val port = server.getServerPort() ?: return@withContext false
         
         val request = Request.Builder()
             .url("http://localhost:$port/session/$sessionId?directory=${project.basePath}")
@@ -289,7 +266,7 @@ class OpenCodeService(private val project: Project) {
      * Share a session and get the share URL.
      */
     suspend fun shareSession(sessionId: String): String? = withContext(Dispatchers.IO) {
-        val port = sharedServerPort ?: return@withContext null
+        val port = server.getServerPort() ?: return@withContext null
         
         val request = Request.Builder()
             .url("http://localhost:$port/session/$sessionId/share?directory=${project.basePath}")
@@ -317,7 +294,7 @@ class OpenCodeService(private val project: Project) {
      * Unshare a session.
      */
     suspend fun unshareSession(sessionId: String): Boolean = withContext(Dispatchers.IO) {
-        val port = sharedServerPort ?: return@withContext false
+        val port = server.getServerPort() ?: return@withContext false
         
         val request = Request.Builder()
             .url("http://localhost:$port/session/$sessionId/share?directory=${project.basePath}")
@@ -365,25 +342,8 @@ class OpenCodeService(private val project: Project) {
      * Check if a server is running on the given port.
      * Made public so OpenCodeFileEditor can verify restored ports.
      */
-    fun isServerRunning(port: Int): Boolean {
-        return try {
-            val request = Request.Builder()
-                .url("http://localhost:$port/session")
-                .get()
-                .build()
-            client.newCall(request).execute().use { it.isSuccessful }
-        } catch (e: Exception) {
-            false
-        }
-    }
-    
-    private fun waitForConnection(port: Int, timeout: Long = 10000): Boolean {
-        val startTime = System.currentTimeMillis()
-        while (System.currentTimeMillis() - startTime < timeout) {
-            if (isServerRunning(port)) return true
-            Thread.sleep(200)
-        }
-        return false
+    suspend fun isServerRunning(port: Int): Boolean {
+        return server.isServerRunning(port)
     }
     
     // ========== Legacy methods for tool window support ==========
@@ -445,12 +405,10 @@ class OpenCodeService(private val project: Project) {
         
         val widget = com.intellij.terminal.JBTerminalWidget.asJediTermWidget(terminalWidget)
             ?: throw IllegalStateException("Failed to create JBTerminalWidget")
-
+        
         widgetPorts[widget] = port
         
-        ApplicationManager.getApplication().executeOnPooledThread {
-             waitForConnection(port)
-        }
+        // Note: Server connection verification removed as it's handled by terminal widget
         
         return Pair(widget, port)
     }

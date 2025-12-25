@@ -155,4 +155,38 @@ class NewSessionActionTest {
         // Verify the action is an AnAction instance
         assertTrue(action is com.intellij.openapi.actionSystem.AnAction)
     }
+    
+    // ========== Edge Case Tests ==========
+    
+    @Test
+    fun `testActionPerformed_CalledTwice_BehavesConsistently`() {
+        // Setup event without project to test early return behavior
+        whenever(mockEvent.project).thenReturn(null)
+        
+        // Perform action twice - should handle gracefully both times
+        assertDoesNotThrow {
+            action.actionPerformed(mockEvent)
+            action.actionPerformed(mockEvent)
+        }
+    }
+    
+    @Test
+    fun `testUpdate_WithNullPresentation_DoesNotThrow`() {
+        // Setup event with null project
+        whenever(mockEvent.project).thenReturn(null)
+        whenever(mockEvent.presentation).thenReturn(mockPresentation)
+        
+        // Should not throw when setting presentation
+        assertDoesNotThrow {
+            action.update(mockEvent)
+        }
+    }
+    
+    @Test
+    fun `testAction_DefaultConstructor_HasExpectedProperties`() {
+        // Verify that a freshly constructed action has expected defaults
+        val freshAction = NewSessionAction()
+        assertNotNull(freshAction)
+        assertEquals("New OpenCode Session", freshAction.templateText)
+    }
 }

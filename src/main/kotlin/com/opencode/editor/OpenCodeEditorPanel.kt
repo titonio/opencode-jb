@@ -3,14 +3,17 @@ package com.opencode.editor
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.logger
-import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.terminal.JBTerminalWidget
 import com.intellij.util.ui.UIUtil
 import com.opencode.service.OpenCodeService
 import com.opencode.settings.OpenCodeSettings
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import java.awt.BorderLayout
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
@@ -24,104 +27,54 @@ private val LOG = logger<OpenCodeEditorPanel>()
 
 class OpenCodeEditorPanel(
     private val project: Project,
-    private var sessionId: String?,
-    private var serverPort: Int?,
+    sessionId: String?,
+    serverPort: Int?,
     private val onSessionChanged: (sessionId: String?, port: Int?) -> Unit
-) : JPanel(BorderLayout()), Disposable {
+) : JPanel(BorderLayout()), Disposable, OpenCodeEditorPanelViewModel.ViewCallback {
     
-    private enum class State {
-        INITIALIZING, RUNNING, EXITED, RESTARTING
-    }
+    private val service = project.getService(OpenCodeService::class.java)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
-    @Volatile
-    private var currentState: State = State.INITIALIZING
+    private val viewModel = OpenCodeEditorPanelViewModel(
+        service = service,
+        projectBasePath = project.basePath,
+        scope = scope,
+        initialSessionId = sessionId,
+        initialServerPort = serverPort
+    )
     
     private var widget: JBTerminalWidget? = null
     private var widgetDisposable: Disposable? = null
     private var monitoringJob: Future<*>? = null
     
-    @Volatile
-    private var isMonitoring = false
-    
-    private val service = project.getService(OpenCodeService::class.java)
-    
     init {
         background = UIUtil.getPanelBackground()
-        initializeTerminal()
+        viewModel.setCallback(this)
+        viewModel.initialize()
     }
     
-    private fun initializeTerminal() {
-        LOG.info("Initializing OpenCode editor terminal")
-        currentState = State.INITIALIZING
+    // ============================================
+    // ViewCallback Implementation
+    // ============================================
+    
+    override fun onStateChanged(state: OpenCodeEditorPanelViewModel.State) {
+        LOG.debug("State changed to: $state")
+    }
+    
+    override fun onSessionAndPortReady(sessionId: String, port: Int) {
+        LOG.info("Session and port ready: session=$sessionId, port=$port")
         
         ApplicationManager.getApplication().invokeLater {
             try {
-                // Handle server port restoration
-                if (serverPort != null) {
-                    if (!service.isServerRunning(serverPort!!)) {
-                        LOG.warn("Restored server port $serverPort not running, will start new server")
-                        serverPort = null
-                    } else {
-                        LOG.info("Reusing existing server on port $serverPort")
-                    }
-                }
-                
-                // Start server if needed
-                if (serverPort == null) {
-                    serverPort = service.getOrStartSharedServer()
-                    if (serverPort == null) {
-                        LOG.error("Failed to start OpenCode server")
-                        showErrorUI("Failed to start OpenCode server after multiple attempts")
-                        return@invokeLater
-                    }
-                    LOG.info("Server started on port $serverPort")
-                }
-                
-                // Handle session ID
-                if (sessionId != null) {
-                    LOG.debug("Verifying restored session: $sessionId")
-                    val sessionExists = runBlocking {
-                        service.getSession(sessionId!!) != null
-                    }
-                    
-                    if (!sessionExists) {
-                        LOG.warn("Session $sessionId no longer exists, creating new session")
-                        sessionId = null
-                    } else {
-                        LOG.info("Using restored session: $sessionId")
-                    }
-                }
-                
-                // Create new session if needed
-                if (sessionId == null) {
-                    val newSession = runBlocking {
-                        try {
-                            service.createSession(null)
-                        } catch (e: Exception) {
-                            thisLogger().error("Failed to create session", e)
-                            null
-                        }
-                    }
-                    sessionId = newSession
-                    LOG.info("New session created: $sessionId")
-                }
-                
-                // If we still don't have a session, we can't continue
-                if (sessionId == null) {
-                    LOG.error("No session available after initialization attempts")
-                    showErrorUI("Failed to create or retrieve OpenCode session")
-                    return@invokeLater
-                }
-                
                 // Notify parent of session/port changes
-                onSessionChanged(sessionId, serverPort)
+                onSessionChanged(sessionId, port)
                 
-                // Create terminal
-                val newWidget = createTerminalForSession(serverPort!!, sessionId!!)
+                // Create terminal widget
+                val newWidget = createTerminalForSession(port, sessionId)
                 widget = newWidget
                 
                 // Register widget with service
-                service.registerWidget(newWidget, serverPort!!)
+                service.registerWidget(newWidget, port)
                 
                 // Show terminal in UI
                 removeAll()
@@ -130,16 +83,43 @@ class OpenCodeEditorPanel(
                 repaint()
                 
                 // Start monitoring
-                currentState = State.RUNNING
                 startProcessMonitoring()
                 
-                LOG.info("OpenCode editor terminal initialized successfully - session=$sessionId port=$serverPort")
+                LOG.info("OpenCode editor terminal initialized successfully - session=$sessionId port=$port")
             } catch (e: Exception) {
-                LOG.error("Failed to initialize OpenCode editor terminal", e)
+                LOG.error("Failed to create terminal widget", e)
                 showErrorUI("Failed to initialize OpenCode: ${e.message}")
             }
         }
     }
+    
+    override fun onError(message: String) {
+        LOG.error("ViewModel error: $message")
+        showErrorUI(message)
+    }
+    
+    override fun onProcessExited() {
+        LOG.info("Process exited notification received")
+        
+        // Cleanup old widget
+        cleanupWidget()
+        
+        val settings = OpenCodeSettings.getInstance()
+        if (!settings.state.autoRestartOnExit) {
+            // Only show restart UI if auto-restart is disabled
+            // (auto-restart will be handled by ViewModel)
+            showRestartUI()
+        }
+    }
+    
+    override fun onTerminalAlive(isAlive: Boolean) {
+        // Optional: Could be used for UI indicators
+        LOG.debug("Terminal alive status: $isAlive")
+    }
+    
+    // ============================================
+    // Terminal Widget Creation and Management
+    // ============================================
     
     private fun createTerminalForSession(port: Int, sessionId: String): JBTerminalWidget {
         LOG.info("Creating terminal widget for editor - port=$port, session=$sessionId")
@@ -188,12 +168,12 @@ class OpenCodeEditorPanel(
     }
     
     private fun startProcessMonitoring() {
-        isMonitoring = true
+        viewModel.startProcessMonitoring()
         
         monitoringJob = ApplicationManager.getApplication().executeOnPooledThread {
             LOG.debug("Process monitoring thread started for editor panel")
             
-            while (isMonitoring && currentState == State.RUNNING) {
+            while (viewModel.isMonitoring && viewModel.getState() == OpenCodeEditorPanelViewModel.State.RUNNING) {
                 Thread.sleep(1000)
                 
                 val isAlive = checkIfTerminalAlive()
@@ -227,34 +207,29 @@ class OpenCodeEditorPanel(
             LOG.warn("Failed to check TTY connector status", e)
         }
         
-        // Strategy 2: Fallback - check if server is still running
-        val port = serverPort ?: return false
-        val serverAlive = service.isServerRunning(port)
-        LOG.debug("Server health check: port=$port, alive=$serverAlive")
-        return serverAlive
+        // Strategy 2: Fallback - delegate to ViewModel for server health check
+        scope.launch {
+            viewModel.checkIfTerminalAlive()
+        }
+        
+        // Return based on server port availability
+        return viewModel.serverPort != null
     }
     
     private fun handleProcessExit() {
-        if (currentState != State.RUNNING) {
-            LOG.debug("handleProcessExit called but state is $currentState, ignoring")
+        if (viewModel.getState() != OpenCodeEditorPanelViewModel.State.RUNNING) {
+            LOG.debug("handleProcessExit called but state is ${viewModel.getState()}, ignoring")
             return
         }
         
-        currentState = State.EXITED
-        isMonitoring = false
-        
-        // Cleanup old widget
-        cleanupWidget()
-        
         val settings = OpenCodeSettings.getInstance()
-        if (settings.state.autoRestartOnExit) {
-            LOG.info("Auto-restart enabled, restarting editor terminal")
-            restartTerminal()
-        } else {
-            LOG.info("Auto-restart disabled, showing restart UI")
-            showRestartUI()
-        }
+        viewModel.handleProcessExit(settings.state.autoRestartOnExit)
     }
+    
+    
+    // ============================================
+    // UI Display Methods
+    // ============================================
     
     private fun showRestartUI() {
         ApplicationManager.getApplication().invokeLater {
@@ -274,10 +249,10 @@ class OpenCodeEditorPanel(
             panel.add(messageLabel, gbc)
             
             // Session info
-            if (sessionId != null) {
+            if (viewModel.sessionId != null) {
                 gbc.gridy = 1
                 gbc.insets = Insets(5, 10, 10, 10)
-                val sessionLabel = JLabel("<html><font size='-2' color='gray'>Session: $sessionId</font></html>")
+                val sessionLabel = JLabel("<html><font size='-2' color='gray'>Session: ${viewModel.sessionId}</font></html>")
                 panel.add(sessionLabel, gbc)
             }
             
@@ -321,25 +296,20 @@ class OpenCodeEditorPanel(
     }
     
     private fun restartTerminal() {
-        if (currentState == State.RESTARTING) {
-            LOG.warn("Restart already in progress, ignoring duplicate request")
-            return
-        }
-        
         LOG.info("Restarting OpenCode editor terminal (user request)")
-        currentState = State.RESTARTING
         
         // Stop monitoring
-        isMonitoring = false
+        viewModel.stopProcessMonitoring()
         monitoringJob?.cancel(true)
         monitoringJob = null
         
         // Cleanup old widget
         cleanupWidget()
         
-        // Start new terminal (will reconnect to same session)
-        initializeTerminal()
+        // Delegate restart to ViewModel
+        viewModel.restart()
     }
+    
     
     private fun cleanupWidget() {
         widget?.let { w ->
@@ -359,11 +329,17 @@ class OpenCodeEditorPanel(
         LOG.info("OpenCodeEditorPanel disposed")
         
         // Stop monitoring
-        isMonitoring = false
+        viewModel.stopProcessMonitoring()
         monitoringJob?.cancel(true)
         monitoringJob = null
         
         // Cleanup widget
         cleanupWidget()
+        
+        // Dispose ViewModel
+        viewModel.dispose()
+        
+        // Cancel coroutine scope
+        scope.cancel()
     }
 }

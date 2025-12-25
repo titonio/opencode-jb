@@ -152,4 +152,46 @@ class OpenCodeFileEditorProviderTest {
         // Policy should hide default editor since we provide custom terminal UI
         assertEquals(FileEditorPolicy.HIDE_DEFAULT_EDITOR, provider.getPolicy())
     }
+    
+    // ========== Edge Case Tests for Coverage ==========
+    
+    @Test
+    fun `test createEditor with invalid path throws IllegalArgumentException`() {
+        // Arrange - file with no valid sessionId
+        val mockFile = mock<VirtualFile>()
+        val mockFs = mock<com.intellij.openapi.vfs.VirtualFileSystem>()
+        whenever(mockFs.protocol).thenReturn(OpenCodeFileSystem.PROTOCOL)
+        whenever(mockFile.fileSystem).thenReturn(mockFs)
+        whenever(mockFile.path).thenReturn("opencode://invalid/path")
+        
+        // Act & Assert - should throw when unable to parse sessionId or find file
+        assertThrows(IllegalArgumentException::class.java) {
+            provider.createEditor(mockProject, mockFile)
+        }
+    }
+    
+    @Test
+    fun `test createEditor with null sessionId throws IllegalArgumentException`() {
+        // Arrange - file with path that can't be parsed
+        val mockFile = mock<VirtualFile>()
+        val mockFs = mock<com.intellij.openapi.vfs.VirtualFileSystem>()
+        whenever(mockFs.protocol).thenReturn(OpenCodeFileSystem.PROTOCOL)
+        whenever(mockFile.fileSystem).thenReturn(mockFs)
+        whenever(mockFile.path).thenReturn("opencode://")
+        
+        // Act & Assert - should throw when sessionId is null
+        assertThrows(IllegalArgumentException::class.java) {
+            provider.createEditor(mockProject, mockFile)
+        }
+    }
+    
+    @Test
+    fun `test accept with OpenCodeVirtualFile always returns true`() {
+        // Multiple acceptance checks for OpenCodeVirtualFile
+        val file1 = OpenCodeVirtualFile(mockFileSystem, "session-1")
+        val file2 = OpenCodeVirtualFile(mockFileSystem, "session-2")
+        
+        assertTrue(provider.accept(mockProject, file1))
+        assertTrue(provider.accept(mockProject, file2))
+    }
 }

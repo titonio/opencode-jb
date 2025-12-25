@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
+import java.lang.reflect.InvocationTargetException
 
 /**
  * Comprehensive tests for OpenCodeFileSystem.
@@ -348,5 +349,173 @@ class OpenCodeFileSystemTest {
             val parsed = OpenCodeFileSystem.parseSessionId(url)
             assertNull(parsed, "Should return null for invalid URL: $url")
         }
+    }
+    
+    // ========== Unsupported Operations Tests ==========
+    
+    @Test
+    fun `test deleteFile throws UnsupportedOperationException`() {
+        // Create a test file
+        val sessionId = "delete-test-session"
+        val path = OpenCodeFileSystem.buildUrl(sessionId)
+        val file = fileSystem.findFileByPath(path)
+        assertNotNull(file)
+        
+        // Use reflection to call protected deleteFile method
+        val deleteMethod = OpenCodeFileSystem::class.java.getDeclaredMethod(
+            "deleteFile", 
+            Any::class.java, 
+            VirtualFile::class.java
+        )
+        deleteMethod.isAccessible = true
+        
+        // Reflection wraps exceptions in InvocationTargetException
+        val invocationException = assertThrows(InvocationTargetException::class.java) {
+            deleteMethod.invoke(fileSystem, null, file)
+        }
+        
+        // Verify the cause is UnsupportedOperationException with correct message
+        assertTrue(invocationException.cause is UnsupportedOperationException)
+        assertEquals("OpenCode files cannot be deleted", invocationException.cause?.message)
+    }
+    
+    @Test
+    fun `test moveFile throws UnsupportedOperationException`() {
+        // Create a test file and mock parent
+        val sessionId = "move-test-session"
+        val path = OpenCodeFileSystem.buildUrl(sessionId)
+        val file = fileSystem.findFileByPath(path)
+        assertNotNull(file)
+        
+        val mockParent = mock<VirtualFile>()
+        
+        // Use reflection to call protected moveFile method
+        val moveMethod = OpenCodeFileSystem::class.java.getDeclaredMethod(
+            "moveFile", 
+            Any::class.java, 
+            VirtualFile::class.java, 
+            VirtualFile::class.java
+        )
+        moveMethod.isAccessible = true
+        
+        // Reflection wraps exceptions in InvocationTargetException
+        val invocationException = assertThrows(InvocationTargetException::class.java) {
+            moveMethod.invoke(fileSystem, null, file, mockParent)
+        }
+        
+        // Verify the cause is UnsupportedOperationException with correct message
+        assertTrue(invocationException.cause is UnsupportedOperationException)
+        assertEquals("OpenCode files cannot be moved", invocationException.cause?.message)
+    }
+    
+    @Test
+    fun `test renameFile throws UnsupportedOperationException`() {
+        // Create a test file
+        val sessionId = "rename-test-session"
+        val path = OpenCodeFileSystem.buildUrl(sessionId)
+        val file = fileSystem.findFileByPath(path)
+        assertNotNull(file)
+        
+        // Use reflection to call protected renameFile method
+        val renameMethod = OpenCodeFileSystem::class.java.getDeclaredMethod(
+            "renameFile", 
+            Any::class.java, 
+            VirtualFile::class.java, 
+            String::class.java
+        )
+        renameMethod.isAccessible = true
+        
+        // Reflection wraps exceptions in InvocationTargetException
+        val invocationException = assertThrows(InvocationTargetException::class.java) {
+            renameMethod.invoke(fileSystem, null, file, "new-name.txt")
+        }
+        
+        // Verify the cause is UnsupportedOperationException with correct message
+        assertTrue(invocationException.cause is UnsupportedOperationException)
+        assertEquals("OpenCode files cannot be renamed", invocationException.cause?.message)
+    }
+    
+    @Test
+    fun `test createChildFile throws UnsupportedOperationException`() {
+        // Create a test file (acting as parent directory)
+        val sessionId = "create-child-file-session"
+        val path = OpenCodeFileSystem.buildUrl(sessionId)
+        val file = fileSystem.findFileByPath(path)
+        assertNotNull(file)
+        
+        // Use reflection to call protected createChildFile method
+        val createChildFileMethod = OpenCodeFileSystem::class.java.getDeclaredMethod(
+            "createChildFile", 
+            Any::class.java, 
+            VirtualFile::class.java, 
+            String::class.java
+        )
+        createChildFileMethod.isAccessible = true
+        
+        // Reflection wraps exceptions in InvocationTargetException
+        val invocationException = assertThrows(InvocationTargetException::class.java) {
+            createChildFileMethod.invoke(fileSystem, null, file, "child.txt")
+        }
+        
+        // Verify the cause is UnsupportedOperationException with correct message
+        assertTrue(invocationException.cause is UnsupportedOperationException)
+        assertEquals("OpenCode file system does not support child files", invocationException.cause?.message)
+    }
+    
+    @Test
+    fun `test createChildDirectory throws UnsupportedOperationException`() {
+        // Create a test file (acting as parent directory)
+        val sessionId = "create-child-dir-session"
+        val path = OpenCodeFileSystem.buildUrl(sessionId)
+        val file = fileSystem.findFileByPath(path)
+        assertNotNull(file)
+        
+        // Use reflection to call protected createChildDirectory method
+        val createChildDirMethod = OpenCodeFileSystem::class.java.getDeclaredMethod(
+            "createChildDirectory", 
+            Any::class.java, 
+            VirtualFile::class.java, 
+            String::class.java
+        )
+        createChildDirMethod.isAccessible = true
+        
+        // Reflection wraps exceptions in InvocationTargetException
+        val invocationException = assertThrows(InvocationTargetException::class.java) {
+            createChildDirMethod.invoke(fileSystem, null, file, "child-dir")
+        }
+        
+        // Verify the cause is UnsupportedOperationException with correct message
+        assertTrue(invocationException.cause is UnsupportedOperationException)
+        assertEquals("OpenCode file system does not support directories", invocationException.cause?.message)
+    }
+    
+    @Test
+    fun `test copyFile throws UnsupportedOperationException`() {
+        // Create a test file and mock parent
+        val sessionId = "copy-test-session"
+        val path = OpenCodeFileSystem.buildUrl(sessionId)
+        val file = fileSystem.findFileByPath(path)
+        assertNotNull(file)
+        
+        val mockParent = mock<VirtualFile>()
+        
+        // Use reflection to call protected copyFile method
+        val copyMethod = OpenCodeFileSystem::class.java.getDeclaredMethod(
+            "copyFile",
+            Any::class.java,
+            VirtualFile::class.java,
+            VirtualFile::class.java,
+            String::class.java
+        )
+        copyMethod.isAccessible = true
+        
+        // Reflection wraps exceptions in InvocationTargetException
+        val invocationException = assertThrows(InvocationTargetException::class.java) {
+            copyMethod.invoke(fileSystem, null, file, mockParent, "copy-name.txt")
+        }
+        
+        // Verify the cause is UnsupportedOperationException with correct message
+        assertTrue(invocationException.cause is UnsupportedOperationException)
+        assertEquals("OpenCode files cannot be copied", invocationException.cause?.message)
     }
 }
