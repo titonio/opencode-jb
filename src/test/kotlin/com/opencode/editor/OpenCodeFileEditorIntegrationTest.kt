@@ -2,8 +2,13 @@ package com.opencode.editor
 
 import com.intellij.openapi.fileEditor.FileEditorStateLevel
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.application.Application
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.Disposable
 import com.opencode.service.OpenCodeService
 import com.opencode.vfs.OpenCodeVirtualFile
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -33,6 +38,8 @@ class OpenCodeFileEditorIntegrationTest {
     private lateinit var mockProject: Project
     private lateinit var mockService: OpenCodeService
     private lateinit var mockFile: OpenCodeVirtualFile
+    private lateinit var mockApplication: Application
+    private lateinit var testDisposable: Disposable
     
     @BeforeEach
     fun setup() {
@@ -51,6 +58,35 @@ class OpenCodeFileEditorIntegrationTest {
         whenever(mockFile.sessionId).thenReturn(null)
         
         whenever(mockService.isOpencodeInstalled()).thenReturn(true)
+
+        // Setup Application mock
+        mockApplication = mock()
+        testDisposable = Disposer.newDisposable()
+        
+        // Mock invokeLater to do nothing to avoid UI creation issues in headless env
+        whenever(mockApplication.invokeLater(any())).thenAnswer { 
+            // Do nothing
+        }
+        
+        // Mock executeOnPooledThread to run immediately
+        whenever(mockApplication.executeOnPooledThread(any<Runnable>())).thenAnswer {
+            (it.arguments[0] as Runnable).run()
+            mock<java.util.concurrent.Future<*>>()
+        }
+        
+        ApplicationManager.setApplication(mockApplication, testDisposable)
+
+        // Setup common service mocks for coroutines
+        runBlocking {
+            whenever(mockService.isServerRunning(any())).thenReturn(false)
+            whenever(mockService.createSession(anyOrNull())).thenReturn("test-session-id")
+            whenever(mockService.getOrStartSharedServer()).thenReturn(12345)
+        }
+    }
+
+    @AfterEach
+    fun tearDown() {
+        Disposer.dispose(testDisposable)
     }
     
     // ========== Editor Creation and Initialization ==========
@@ -335,16 +371,22 @@ class OpenCodeFileEditorIntegrationTest {
     }
     
     @Test
-    @Disabled("Requires proper coroutine scope cleanup - OpenCodeEditorPanel has background coroutines")
     fun `test dispose cleans up editor panel`() {
+        // Setup service mock for successful initialization
         val editor = OpenCodeFileEditor(mockProject, mockFile)
         
-        // Initialize component
+        // Initialize component to create editorPanel
         editor.component
+        
+        // Verify editorPanel was created by checking interactions
+        // Note: Can't easily verify private fields, so we rely on behavior
         
         assertDoesNotThrow {
             editor.dispose()
         }
+        
+        // Verify unregistration
+        verify(mockService).unregisterActiveEditor(mockFile)
     }
     
     // ========== Session Management ==========
