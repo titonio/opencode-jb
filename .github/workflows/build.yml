@@ -80,8 +80,19 @@ jobs:
         with:
           cache-read-only: true
 
+      - name: Install Xvfb (for UI tests)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libxrender1 libxtst6 libxi6
+
       - name: Run Tests
-        run: ./gradlew check
+        run: |
+          Xvfb :99 -screen 0 1920x1080x24 &
+          sleep 3
+          DISPLAY=:99.0 ./gradlew check
+        env:
+          DISPLAY: :99.0
+          GRADLE_OPTS: -Xmx4g -XX:MaxMetaspaceSize=1g
 
       - name: Upload Test Results
         if: always()
