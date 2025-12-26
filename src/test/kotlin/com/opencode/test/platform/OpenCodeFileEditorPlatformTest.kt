@@ -1,35 +1,40 @@
 package com.opencode.test.platform
 
 import com.intellij.openapi.project.Project
+import com.intellij.testFramework.replaceService
 import com.opencode.editor.OpenCodeFileEditor
 import com.opencode.service.OpenCodeService
 import com.opencode.test.OpenCodePlatformTestBase
 import com.opencode.vfs.OpenCodeFileSystem
 import com.opencode.vfs.OpenCodeVirtualFile
+import org.junit.Before
 import org.junit.Test
-import org.junit.Ignore
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 
 class OpenCodeFileEditorPlatformTest : OpenCodePlatformTestBase() {
 
+    private lateinit var mockService: OpenCodeService
     private lateinit var mockFileSystem: OpenCodeFileSystem
     private lateinit var mockFile: OpenCodeVirtualFile
 
+    @Before
     override fun setUp() {
         super.setUp()
-        // Initialize basic mocks that don't depend on complex services
-        // The real project and services are provided by the platform test fixture
+        mockService = mock()
+        whenever(mockService.isOpencodeInstalled()).thenReturn(true)
+        project.replaceService(OpenCodeService::class.java, mockService, testRootDisposable)
+
+        mockFileSystem = OpenCodeFileSystem.getInstance()
+        mockFile = OpenCodeVirtualFile(mockFileSystem, "test-session-123")
     }
 
     @Test
     fun `test initialization with valid file and project`() {
-        val fileSystem = OpenCodeFileSystem.getInstance()
-        val file = OpenCodeVirtualFile(fileSystem, "test-session-123")
-        
-        // Use the real project from the test fixture
-        val editor = OpenCodeFileEditor(project, file)
-        
+        val editor = OpenCodeFileEditor(project, mockFile)
+
         assertNotNull(editor)
-        assertEquals(file, editor.file)
+        assertEquals(mockFile, editor.file)
         assertEquals("OpenCode", editor.name)
         assertFalse(editor.isModified)
         assertTrue(editor.isValid)
@@ -37,28 +42,18 @@ class OpenCodeFileEditorPlatformTest : OpenCodePlatformTestBase() {
 
     @Test
     fun `test initialization registers editor with service`() {
-        val fileSystem = OpenCodeFileSystem.getInstance()
-        val file = OpenCodeVirtualFile(fileSystem, "test-session-123")
-        
-        val editor = OpenCodeFileEditor(project, file)
-        
-        // Verify service state
+        OpenCodeFileEditor(project, mockFile)
+
         val service = project.getService(OpenCodeService::class.java)
-        // Note: In a real platform test, we'd need to check if the service state reflects this
-        // But OpenCodeService might not be fully functional in test mode without a real server
         assertNotNull(service)
     }
 
     @Test
     fun `test getComponent returns container panel`() {
-        val fileSystem = OpenCodeFileSystem.getInstance()
-        val file = OpenCodeVirtualFile(fileSystem, "test-session-123")
-        
-        val editor = OpenCodeFileEditor(project, file)
+        val editor = OpenCodeFileEditor(project, mockFile)
         val component = editor.component
-        
+
         assertNotNull(component)
-        // Verify it's a JComponent
         assertTrue(component is javax.swing.JComponent)
     }
 }

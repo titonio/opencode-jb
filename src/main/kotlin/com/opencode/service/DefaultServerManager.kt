@@ -27,9 +27,16 @@ class DefaultServerManager(
         LOG.info("Getting/starting shared OpenCode server")
         
         // Check if server is already running
-        if (serverPort != null && isServerRunning(serverPort!!)) {
-            LOG.info("Reusing existing shared server on port $serverPort")
-            return serverPort
+        if (serverPort != null) {
+            val existingPort = serverPort!!
+            if (isServerRunning(existingPort)) {
+                LOG.info("Reusing existing shared server on port $existingPort")
+                return existingPort
+            }
+            LOG.warn("Existing shared server on port $existingPort is unresponsive; restarting")
+            serverPort = null
+            serverProcess?.destroy()
+            serverProcess = null
         }
         
         // Try to start server with retries
@@ -45,8 +52,12 @@ class DefaultServerManager(
                     return port
                 }
                 LOG.warn("Server on port $port failed to respond (attempt ${attempt + 1})")
+                serverProcess?.destroy()
+                serverProcess = null
             } catch (e: Exception) {
                 thisLogger().warn("Server start attempt ${attempt + 1} failed", e)
+                serverProcess?.destroy()
+                serverProcess = null
             }
         }
         
