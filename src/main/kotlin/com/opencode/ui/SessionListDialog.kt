@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import com.intellij.openapi.ui.Messages
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
@@ -18,13 +19,47 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import javax.swing.*
 
+// Abstraction for UI dialogs to allow testing
+interface DialogProvider {
+    fun showInputDialog(parent: Component, message: String, title: String): String?
+    fun showErrorDialog(parent: Component, message: String, title: String)
+    fun showInfoMessage(parent: Component, message: String, title: String)
+    fun showYesNoDialog(parent: Component, message: String, title: String): Boolean
+    fun showOptionDialog(parent: Component, message: String, title: String, options: Array<String>, initialValue: Int): Int
+}
+
+class DefaultDialogProvider : DialogProvider {
+    override fun showInputDialog(parent: Component, message: String, title: String): String? =
+        Messages.showInputDialog(parent, message, title, null)
+    
+    override fun showErrorDialog(parent: Component, message: String, title: String) {
+        Messages.showErrorDialog(parent, message, title)
+    }
+    
+    override fun showInfoMessage(parent: Component, message: String, title: String) {
+        Messages.showInfoMessage(parent, message, title)
+    }
+    
+    override fun showYesNoDialog(parent: Component, message: String, title: String): Boolean {
+        return Messages.showYesNoDialog(parent, message, title, Messages.getQuestionIcon()) == Messages.YES
+    }
+    
+    override fun showOptionDialog(parent: Component, message: String, title: String, options: Array<String>, initialValue: Int): Int {
+        return Messages.showDialog(parent, message, title, options, initialValue, Messages.getInformationIcon())
+    }
+}
+
 class SessionListDialog(
     private val project: Project,
-    service: OpenCodeService
+    service: OpenCodeService,
+    private val dialogProvider: DialogProvider = DefaultDialogProvider()
 ) : DialogWrapper(project), SessionListViewModel.ViewCallback {
     
     private val sessionListModel = DefaultListModel<SessionInfo>()
-    private val sessionList = JBList(sessionListModel)
+    
+    // Exposed for testing
+    val sessionList = JBList(sessionListModel)
+    var rootPanel: JPanel? = null
     
     // ViewModel handles all business logic
     private val viewModelScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -40,6 +75,7 @@ class SessionListDialog(
     
     override fun createCenterPanel(): JComponent {
         val panel = JPanel(BorderLayout())
+        rootPanel = panel
         panel.preferredSize = Dimension(600, 400)
         
         // Configure list
@@ -59,11 +95,10 @@ class SessionListDialog(
         
         val newSessionButton = JButton("New Session")
         newSessionButton.addActionListener {
-            val title = JOptionPane.showInputDialog(
+            val title = dialogProvider.showInputDialog(
                 panel,
                 "Enter session title (optional):",
-                "New Session",
-                JOptionPane.PLAIN_MESSAGE
+                "New Session"
             )
             if (title != null) { // User didn't cancel
                 viewModel.createSession(if (title.isBlank()) null else title)
@@ -126,11 +161,10 @@ class SessionListDialog(
     
     override fun onError(message: String) {
         SwingUtilities.invokeLater {
-            JOptionPane.showMessageDialog(
-                contentPane,
+            dialogProvider.showErrorDialog(
+                rootPanel ?: contentPane,
                 message,
-                "Error",
-                JOptionPane.ERROR_MESSAGE
+                "Error"
             )
         }
     }
@@ -149,11 +183,10 @@ class SessionListDialog(
             val selection = java.awt.datatransfer.StringSelection(url)
             clipboard.setContents(selection, selection)
             
-            JOptionPane.showMessageDialog(
-                contentPane,
+            dialogProvider.showInfoMessage(
+                rootPanel ?: contentPane,
                 "Session shared! URL copied to clipboard:\n$url",
-                "Share Successful",
-                JOptionPane.INFORMATION_MESSAGE
+                "Share Successful"
             )
         }
     }
@@ -163,14 +196,13 @@ class SessionListDialog(
     private fun deleteSelectedSession() {
         val session = sessionList.selectedValue ?: return
         
-        val confirm = JOptionPane.showConfirmDialog(
-            contentPane,
+        val confirm = dialogProvider.showYesNoDialog(
+            rootPanel ?: contentPane,
             "Delete session \"${viewModel.getSessionDisplayTitle(session)}\"?",
-            "Confirm Delete",
-            JOptionPane.YES_NO_OPTION
+            "Confirm Delete"
         )
         
-        if (confirm == JOptionPane.YES_OPTION) {
+        if (confirm) {
             viewModel.deleteSession(session)
         }
     }
@@ -182,15 +214,12 @@ class SessionListDialog(
             // Already shared, show URL with option to unshare
             val shareUrl = viewModel.getShareUrl(session)!!
             val options = arrayOf("Copy URL", "Unshare", "Cancel")
-            val choice = JOptionPane.showOptionDialog(
-                contentPane,
+            val choice = dialogProvider.showOptionDialog(
+                rootPanel ?: contentPane,
                 "Share URL: $shareUrl",
                 "Session Shared",
-                JOptionPane.DEFAULT_OPTION,
-                JOptionPane.INFORMATION_MESSAGE,
-                null,
                 options,
-                options[0]
+                0
             )
             
             when (choice) {
