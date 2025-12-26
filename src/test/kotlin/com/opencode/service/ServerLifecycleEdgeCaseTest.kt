@@ -3,7 +3,7 @@ package com.opencode.service
 import com.opencode.test.MockServerManager
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -61,7 +61,7 @@ class ServerLifecycleEdgeCaseTest {
     // ========== Concurrent Server Startup Tests ==========
     
     @Test
-    fun `multiple concurrent getOrStartServer calls return same port`() = runTest {
+    fun `multiple concurrent getOrStartServer calls return same port`() = runBlocking {
         // Arrange
         val mockPort = 3000
         val mockServerManager = MockServerManager(mockPort = mockPort, shouldSucceed = true)
@@ -104,7 +104,7 @@ class ServerLifecycleEdgeCaseTest {
     }
     
     @Test
-    fun `concurrent server starts with one failure still succeeds`() = runTest {
+    fun `concurrent server starts with one failure still succeeds`() = runBlocking {
         // Arrange - Create a manager that fails once then succeeds
         var attemptCount = 0
         val mockPort = 3000
@@ -139,7 +139,7 @@ class ServerLifecycleEdgeCaseTest {
     // ========== Port Conflict Handling Tests ==========
     
     @Test
-    fun `isServerRunning handles port conflict gracefully`() = runTest {
+    fun `isServerRunning handles port conflict gracefully`() = runBlocking {
         // Arrange - Create a server on a specific port
         val serverSocket = ServerSocket(0) // Random available port
         val occupiedPort = serverSocket.localPort
@@ -158,7 +158,7 @@ class ServerLifecycleEdgeCaseTest {
     }
     
     @Test
-    fun `server manager handles connection refused gracefully`() = runTest {
+    fun `server manager handles connection refused gracefully`() = runBlocking {
         // Arrange
         val unusedPort = 54321 // Port with nothing running
         val serverManager = DefaultServerManager(workingDirectory, client)
@@ -171,7 +171,7 @@ class ServerLifecycleEdgeCaseTest {
     }
     
     @Test
-    fun `server status check with invalid port numbers`() = runTest {
+    fun `server status check with invalid port numbers`() = runBlocking {
         // Arrange
         val serverManager = DefaultServerManager(workingDirectory, client)
         
@@ -184,7 +184,7 @@ class ServerLifecycleEdgeCaseTest {
     // ========== Server Crash Recovery Tests ==========
     
     @Test
-    fun `server restart after crash simulation`() = runTest {
+    fun `server restart after crash simulation`() = runBlocking {
         // Arrange - Create a manager that simulates a crash
         val mockPort = 3000
         var serverRunning = true
@@ -229,7 +229,7 @@ class ServerLifecycleEdgeCaseTest {
     }
     
     @Test
-    fun `server recovery after multiple failed starts`() = runTest {
+    fun `server recovery after multiple failed starts`() = runBlocking {
         // Arrange - Simulate multiple failures before success
         var attemptCount = 0
         val mockPort = 3000
@@ -263,7 +263,7 @@ class ServerLifecycleEdgeCaseTest {
     // ========== Idempotent Startup Tests ==========
     
     @Test
-    fun `multiple startup attempts are idempotent`() = runTest {
+    fun `multiple startup attempts are idempotent`() = runBlocking {
         // Arrange
         val mockPort = 3000
         val mockServerManager = MockServerManager(mockPort = mockPort, shouldSucceed = true)
@@ -281,7 +281,7 @@ class ServerLifecycleEdgeCaseTest {
     }
     
     @Test
-    fun `getOrStartServer is idempotent after stop`() = runTest {
+    fun `getOrStartServer is idempotent after stop`() = runBlocking {
         // Arrange
         val mockPort = 3000
         var stopped = false
@@ -311,7 +311,7 @@ class ServerLifecycleEdgeCaseTest {
     // ========== Server Restart Behavior Tests ==========
     
     @Test
-    fun `server restart clears previous state`() = runTest {
+    fun `server restart clears previous state`() = runBlocking {
         // Arrange
         val mockPort = 3000
         var stopped = false
@@ -344,7 +344,7 @@ class ServerLifecycleEdgeCaseTest {
     }
     
     @Test
-    fun `rapid restart cycles maintain consistency`() = runTest {
+    fun `rapid restart cycles maintain consistency`() = runBlocking {
         // Arrange
         val mockPort = 3000
         var stopped = false
@@ -379,7 +379,7 @@ class ServerLifecycleEdgeCaseTest {
     // ========== Server Status Checking Edge Cases ==========
     
     @Test
-    fun `isServerRunning returns false after stopServer`() = runTest {
+    fun `isServerRunning returns false after stopServer`() = runBlocking {
         // Arrange
         val mockPort = 3000
         val mockServerManager = MockServerManager(mockPort = mockPort, shouldSucceed = true)
@@ -397,7 +397,7 @@ class ServerLifecycleEdgeCaseTest {
     }
     
     @Test
-    fun `isServerRunning returns false for wrong port`() = runTest {
+    fun `isServerRunning returns false for wrong port`() = runBlocking {
         // Arrange
         val mockPort = 3000
         val wrongPort = 4000
@@ -414,7 +414,7 @@ class ServerLifecycleEdgeCaseTest {
     }
     
     @Test
-    fun `isServerRunning handles slow server response gracefully`() = runTest {
+    fun `isServerRunning handles slow server response gracefully`() = runBlocking {
         // Arrange - Server that responds with 500 error (unreachable for our purposes)
         val port = mockWebServer.port
         mockWebServer.enqueue(
@@ -435,7 +435,7 @@ class ServerLifecycleEdgeCaseTest {
     // ========== Process Termination Edge Cases ==========
     
     @Test
-    fun `stopServer can be called multiple times safely`() = runTest {
+    fun `stopServer can be called multiple times safely`() = runBlocking {
         // Arrange
         val mockServerManager = MockServerManager(shouldSucceed = true)
         
@@ -450,7 +450,7 @@ class ServerLifecycleEdgeCaseTest {
     }
     
     @Test
-    fun `stopServer before start is safe`() = runTest {
+    fun `stopServer before start is safe`() = runBlocking {
         // Arrange
         val mockServerManager = MockServerManager(shouldSucceed = true)
         
@@ -466,7 +466,7 @@ class ServerLifecycleEdgeCaseTest {
     }
     
     @Test
-    fun `getServerPort returns null after stop`() = runTest {
+    fun `getServerPort returns null after stop`() = runBlocking {
         // Arrange
         val mockServerManager = MockServerManager(shouldSucceed = true)
         
@@ -483,7 +483,7 @@ class ServerLifecycleEdgeCaseTest {
     }
     
     @Test
-    fun `server manager handles graceful shutdown during active check`() = runTest {
+    fun `server manager handles graceful shutdown during active check`() = runBlocking {
         // Arrange
         val mockPort = 3000
         var isRunning = true

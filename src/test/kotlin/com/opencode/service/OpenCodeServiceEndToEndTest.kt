@@ -11,7 +11,7 @@ import com.opencode.test.TestDataFactory
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -83,7 +83,7 @@ class OpenCodeServiceEndToEndTest {
     // ========== Full Session Lifecycle Tests ==========
     
     @Test
-    fun `test complete session lifecycle - create to delete with all operations`() = runTest {
+    fun `test complete session lifecycle - create to delete with all operations`() = runBlocking {
         // This test verifies a complete end-to-end workflow:
         // Create → List → Get → Share → Unshare → Delete
         
@@ -152,7 +152,7 @@ class OpenCodeServiceEndToEndTest {
     }
     
     @Test
-    fun `test session state transitions with verification at each step`() = runTest {
+    fun `test session state transitions with verification at each step`() = runBlocking {
         // This test verifies that session state is correctly maintained
         // through various transitions
         
@@ -193,7 +193,7 @@ class OpenCodeServiceEndToEndTest {
     }
     
     @Test
-    fun `test session persistence across multiple list operations`() = runTest {
+    fun `test session persistence across multiple list operations`() = runBlocking {
         // This test verifies that session data persists correctly
         // in cache across multiple operations
         
@@ -229,7 +229,7 @@ class OpenCodeServiceEndToEndTest {
     }
     
     @Test
-    fun `test resource cleanup after session deletion`() = runTest {
+    fun `test resource cleanup after session deletion`() = runBlocking {
         // This test verifies that all resources are properly cleaned up
         // after a session is deleted
         
@@ -266,7 +266,7 @@ class OpenCodeServiceEndToEndTest {
     }
     
     @Test
-    fun `test session lifecycle with server restart simulation`() = runTest {
+    fun `test session lifecycle with server restart simulation`() = runBlocking {
         // This test simulates a server restart during session lifecycle
         // to verify recovery and consistency
         
@@ -301,7 +301,7 @@ class OpenCodeServiceEndToEndTest {
     }
     
     @Test
-    fun `test complete workflow from action to completion`() = runTest {
+    fun `test complete workflow from action to completion`() = runBlocking {
         // This simulates a real user workflow:
         // 1. User creates a session
         // 2. User works with the session
@@ -351,7 +351,7 @@ class OpenCodeServiceEndToEndTest {
     // ========== Multi-Session Scenarios Tests ==========
     
     @Test
-    fun `test creating and managing multiple sessions simultaneously`() = runTest {
+    fun `test creating and managing multiple sessions simultaneously`() = runBlocking {
         // This test verifies that the service can handle multiple
         // sessions being created and managed at the same time
         
@@ -389,7 +389,7 @@ class OpenCodeServiceEndToEndTest {
     }
     
     @Test
-    fun `test switching between active sessions`() = runTest {
+    fun `test switching between active sessions`() = runBlocking {
         // This test simulates a user switching between different sessions
         
         val session1 = TestDataFactory.createSessionInfo(id = "switch-1")
@@ -439,7 +439,7 @@ class OpenCodeServiceEndToEndTest {
     }
     
     @Test
-    fun `test session isolation - operations on one do not affect others`() = runTest {
+    fun `test session isolation - operations on one do not affect others`() = runBlocking {
         // This test verifies that operations on one session
         // don't inadvertently affect other sessions
         
@@ -484,7 +484,7 @@ class OpenCodeServiceEndToEndTest {
     }
     
     @Test
-    fun `test concurrent operations on multiple sessions`() = runTest {
+    fun `test concurrent operations on multiple sessions`() = runBlocking {
         // This test verifies thread-safety when performing
         // operations on multiple sessions concurrently
         
@@ -522,7 +522,7 @@ class OpenCodeServiceEndToEndTest {
     }
     
     @Test
-    fun `test managing sessions across multiple projects`() = runTest {
+    fun `test managing sessions across multiple projects`() = runBlocking {
         // This test simulates having different sessions for different
         // project contexts, verifying proper isolation
         
@@ -556,7 +556,7 @@ class OpenCodeServiceEndToEndTest {
     // ========== Widget Coordination Tests ==========
     
     @Test
-    fun `test widget registration and lifecycle`() = runTest {
+    fun `test widget registration and lifecycle`() = runBlocking {
         // This test verifies that terminal widgets can be registered
         // and unregistered properly
         
@@ -592,7 +592,7 @@ class OpenCodeServiceEndToEndTest {
     }
     
     @Test
-    fun `test widget unregistration cleanup`() = runTest {
+    fun `test widget unregistration cleanup`() = runBlocking {
         // This test verifies that unregistering a widget
         // properly cleans up all associated resources
         
@@ -619,7 +619,7 @@ class OpenCodeServiceEndToEndTest {
     }
     
     @Test
-    fun `test multiple widgets per session scenario`() = runTest {
+    fun `test multiple widgets per session scenario`() = runBlocking {
         // This test simulates having multiple terminal widgets
         // open for the same session (e.g., split terminals)
         
@@ -652,7 +652,7 @@ class OpenCodeServiceEndToEndTest {
     }
     
     @Test
-    fun `test widget state during session state changes`() = runTest {
+    fun `test widget state during session state changes`() = runBlocking {
         // This test verifies that widget registration is maintained
         // correctly even when sessions change state
         
@@ -701,7 +701,7 @@ class OpenCodeServiceEndToEndTest {
     // ========== End-to-End Workflow Tests ==========
     
     @Test
-    fun `test complete user workflow with editor registration`() = runTest {
+    fun `test complete user workflow with editor registration`() = runBlocking {
         // This test simulates a complete user workflow:
         // 1. User opens editor tab (registers)
         // 2. Creates session
@@ -746,7 +746,7 @@ class OpenCodeServiceEndToEndTest {
     }
     
     @Test
-    fun `test integration between service, UI, and file system components`() = runTest {
+    fun `test integration between service, UI, and file system components`() = runBlocking {
         // This test verifies integration between service layer,
         // UI components (editor), and file system operations
         
@@ -789,7 +789,7 @@ class OpenCodeServiceEndToEndTest {
     }
     
     @Test
-    fun `test real-world usage pattern with multiple operations`() = runTest {
+    fun `test real-world usage pattern with multiple operations`() = runBlocking {
         // This test simulates a realistic user workflow:
         // - Create multiple sessions over time
         // - Share some, delete some
@@ -860,7 +860,7 @@ class OpenCodeServiceEndToEndTest {
     }
     
     @Test
-    fun `test error recovery in end-to-end workflow`() = runTest {
+    fun `test error recovery in end-to-end workflow`() = runBlocking {
         // This test verifies that the system can recover from errors
         // during a complete workflow
         
@@ -902,7 +902,7 @@ class OpenCodeServiceEndToEndTest {
     }
     
     @Test
-    fun `test session cache consistency across complex workflow`() = runTest {
+    fun `test session cache consistency across complex workflow`() = runBlocking {
         // This test verifies that the cache remains consistent
         // through a complex series of operations
         

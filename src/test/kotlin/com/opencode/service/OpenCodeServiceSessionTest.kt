@@ -6,7 +6,7 @@ import com.opencode.model.SessionResponse
 import com.opencode.test.MockOpenCodeServer
 import com.opencode.test.MockServerManager
 import com.opencode.test.TestDataFactory
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -57,7 +57,7 @@ class OpenCodeServiceSessionTest {
     // ========== createSession Tests ==========
     
     @Test
-    fun `createSession with custom title creates session successfully`() = runTest {
+    fun `createSession with custom title creates session successfully`() = runBlocking {
         // Arrange
         val expectedTitle = "My Custom Session"
         val expectedId = "session-123"
@@ -80,7 +80,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `createSession without title uses default title format`() = runTest {
+    fun `createSession without title uses default title format`() = runBlocking {
         // Arrange
         val expectedId = "session-456"
         val response = TestDataFactory.createSessionResponse(
@@ -101,8 +101,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    @Disabled("Test causes LOG.error which triggers TestLoggerAssertionError - error handling works correctly")
-    fun `createSession handles server error gracefully`() = runTest {
+    fun `createSession handles server error gracefully`() = runBlocking {
         // Arrange
         mockServer.setupSmartDispatcher() // No createResponse - will return error
         
@@ -116,7 +115,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `createSession updates cache after successful creation`() = runTest {
+    fun `createSession updates cache after successful creation`() = runBlocking {
         // Arrange
         val sessionId = "new-session"
         val response = TestDataFactory.createSessionResponse(id = sessionId)
@@ -135,7 +134,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `createSession triggers cleanup when needed`() = runTest {
+    fun `createSession triggers cleanup when needed`() = runBlocking {
         // Arrange: Create 11 sessions to trigger cleanup
         val sessions = TestDataFactory.createSessionList(11)
         val newSessionResponse = TestDataFactory.createSessionResponse(id = "new-session")
@@ -156,7 +155,7 @@ class OpenCodeServiceSessionTest {
     // ========== listSessions Tests ==========
     
     @Test
-    fun `listSessions returns empty list when no sessions exist`() = runTest {
+    fun `listSessions returns empty list when no sessions exist`() = runBlocking {
         // Arrange
         mockServer.setupSmartDispatcher(sessions = emptyList())
         
@@ -168,7 +167,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `listSessions returns cached results within TTL`() = runTest {
+    fun `listSessions returns cached results within TTL`() = runBlocking {
         // Arrange
         val sessions = TestDataFactory.createSessionList(3)
         mockServer.setupSmartDispatcher(sessions = sessions)
@@ -186,7 +185,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `listSessions refreshes expired cache automatically`() = runTest {
+    fun `listSessions refreshes expired cache automatically`() = runBlocking {
         // Arrange
         val sessions = TestDataFactory.createSessionList(2)
         mockServer.setupSmartDispatcher(sessions = sessions)
@@ -207,7 +206,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `listSessions force refresh bypasses cache`() = runTest {
+    fun `listSessions force refresh bypasses cache`() = runBlocking {
         // Arrange
         val sessions = TestDataFactory.createSessionList(2)
         mockServer.setupSmartDispatcher(sessions = sessions)
@@ -221,7 +220,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `listSessions handles server down gracefully`() = runTest {
+    fun `listSessions handles server down gracefully`() = runBlocking {
         // Arrange - Create service with failing ServerManager
         val failingServerManager = MockServerManager(shouldSucceed = false)
         val serviceWithFailedServer = OpenCodeService(mockProject, failingServerManager)
@@ -235,7 +234,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `listSessions sorts by updated time descending`() = runTest {
+    fun `listSessions sorts by updated time descending`() = runBlocking {
         // Arrange - Sessions with different updated times
         val now = System.currentTimeMillis()
         val sessions = listOf(
@@ -258,7 +257,7 @@ class OpenCodeServiceSessionTest {
     // ========== getSession Tests ==========
     
     @Test
-    fun `getSession returns session for valid ID`() = runTest {
+    fun `getSession returns session for valid ID`() = runBlocking {
         // Arrange
         val sessionId = "valid-session"
         val session = TestDataFactory.createSessionInfo(id = sessionId)
@@ -273,7 +272,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `getSession returns null for invalid ID`() = runTest {
+    fun `getSession returns null for invalid ID`() = runBlocking {
         // Arrange
         mockServer.setupSmartDispatcher() // No getSessionResponse - will return 404
         
@@ -285,7 +284,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `getSession returns null on server error`() = runTest {
+    fun `getSession returns null on server error`() = runBlocking {
         // Arrange
         mockServer.setupSmartDispatcher() // No getSessionResponse - will return 404
         
@@ -299,7 +298,7 @@ class OpenCodeServiceSessionTest {
     // ========== deleteSession Tests ==========
     
     @Test
-    fun `deleteSession removes session successfully`() = runTest {
+    fun `deleteSession removes session successfully`() = runBlocking {
         // Arrange
         val sessionId = "session-to-delete"
         mockServer.setupSmartDispatcher(deleteSuccess = true)
@@ -312,7 +311,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `deleteSession updates cache after successful deletion`() = runTest {
+    fun `deleteSession updates cache after successful deletion`() = runBlocking {
         // Arrange
         val sessionId = "cached-session"
         val session = TestDataFactory.createSessionInfo(id = sessionId)
@@ -335,7 +334,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `deleteSession returns false on failure`() = runTest {
+    fun `deleteSession returns false on failure`() = runBlocking {
         // Arrange
         mockServer.setupSmartDispatcher(deleteSuccess = false)
         
@@ -347,7 +346,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `deleteSession handles server down gracefully`() = runTest {
+    fun `deleteSession handles server down gracefully`() = runBlocking {
         // Arrange - Create service with failing ServerManager
         val failingServerManager = MockServerManager(shouldSucceed = false)
         val serviceWithFailedServer = OpenCodeService(mockProject, failingServerManager)
@@ -362,7 +361,7 @@ class OpenCodeServiceSessionTest {
     // ========== shareSession Tests ==========
     
     @Test
-    fun `shareSession returns share URL on success`() = runTest {
+    fun `shareSession returns share URL on success`() = runBlocking {
         // Arrange
         val sessionId = "session-to-share"
         val shareUrl = "https://opencode.ai/share/abc123"
@@ -378,7 +377,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `shareSession updates cache with shared session`() = runTest {
+    fun `shareSession updates cache with shared session`() = runBlocking {
         // Arrange
         val sessionId = "session-to-share"
         val shareUrl = "https://opencode.ai/share/xyz789"
@@ -408,7 +407,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `shareSession returns null on error`() = runTest {
+    fun `shareSession returns null on error`() = runBlocking {
         // Arrange
         mockServer.setupSmartDispatcher() // No shareSessionResponse or shareUrl - will fail
         
@@ -422,7 +421,7 @@ class OpenCodeServiceSessionTest {
     // ========== unshareSession Tests ==========
     
     @Test
-    fun `unshareSession removes share successfully`() = runTest {
+    fun `unshareSession removes share successfully`() = runBlocking {
         // Arrange
         val sessionId = "shared-session"
         val unsharedSession = TestDataFactory.createSessionInfo(id = sessionId)
@@ -440,7 +439,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `unshareSession refreshes cache after success`() = runTest {
+    fun `unshareSession refreshes cache after success`() = runBlocking {
         // Arrange
         val sessionId = "shared-session"
         val sharedSession = TestDataFactory.createSharedSession(id = sessionId)
@@ -464,7 +463,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `unshareSession returns false on failure`() = runTest {
+    fun `unshareSession returns false on failure`() = runBlocking {
         // Arrange
         mockServer.setupSmartDispatcher(unshareSuccess = false)
         
@@ -478,7 +477,7 @@ class OpenCodeServiceSessionTest {
     // ========== cleanupOldSessions Tests ==========
     
     @Test
-    fun `cleanupOldSessions keeps maximum 10 sessions`() = runTest {
+    fun `cleanupOldSessions keeps maximum 10 sessions`() = runBlocking {
         // Arrange - Create 15 sessions
         val sessions = TestDataFactory.createSessionList(15)
         
@@ -497,7 +496,7 @@ class OpenCodeServiceSessionTest {
     }
     
     @Test
-    fun `cleanupOldSessions sorts by updated time and deletes oldest`() = runTest {
+    fun `cleanupOldSessions sorts by updated time and deletes oldest`() = runBlocking {
         // Arrange - Create sessions with specific updated times
         val now = System.currentTimeMillis()
         val sessions = listOf(

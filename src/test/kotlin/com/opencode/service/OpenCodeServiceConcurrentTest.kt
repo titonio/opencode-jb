@@ -6,7 +6,7 @@ import com.opencode.test.MockOpenCodeServer
 import com.opencode.test.MockServerManager
 import com.opencode.test.TestDataFactory
 import kotlinx.coroutines.*
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -69,7 +69,7 @@ class OpenCodeServiceConcurrentTest {
     // ========== Concurrent List Operations ==========
     
     @Test
-    fun `concurrent listSessions calls are thread-safe`() = runTest {
+    fun `concurrent listSessions calls are thread-safe`() = runBlocking {
         // Arrange
         val sessions = TestDataFactory.createSessionList(5)
         mockServer.setupSmartDispatcher(sessions = sessions)
@@ -107,7 +107,7 @@ class OpenCodeServiceConcurrentTest {
     }
     
     @Test
-    fun `concurrent listSessions with mixed cache and refresh`() = runTest {
+    fun `concurrent listSessions with mixed cache and refresh`() = runBlocking {
         // Arrange
         val sessions = TestDataFactory.createSessionList(3)
         mockServer.setupSmartDispatcher(sessions = sessions)
@@ -146,7 +146,7 @@ class OpenCodeServiceConcurrentTest {
     // ========== Concurrent Create Operations ==========
     
     @Test
-    fun `concurrent createSession calls create unique sessions`() = runTest {
+    fun `concurrent createSession calls create unique sessions`() = runBlocking {
         // Arrange
         val concurrentCreates = 5
         val createdIds = ConcurrentHashMap<Int, String>()
@@ -198,7 +198,7 @@ class OpenCodeServiceConcurrentTest {
     }
     
     @Test
-    fun `concurrent createSession triggers cleanup correctly`() = runTest {
+    fun `concurrent createSession triggers cleanup correctly`() = runBlocking {
         // Arrange - Start with 8 sessions, create 5 more to trigger cleanup (max is 10)
         val initialSessions = TestDataFactory.createSessionList(8)
         mockServer.setupSmartDispatcher(
@@ -245,7 +245,7 @@ class OpenCodeServiceConcurrentTest {
     // ========== Concurrent Delete Operations ==========
     
     @Test
-    fun `concurrent deleteSession operations are thread-safe`() = runTest {
+    fun `concurrent deleteSession operations are thread-safe`() = runBlocking {
         // Arrange
         val sessions = TestDataFactory.createSessionList(20)
         mockServer.setupSmartDispatcher(
@@ -284,7 +284,7 @@ class OpenCodeServiceConcurrentTest {
     }
     
     @Test
-    fun `concurrent delete same session handles race condition`() = runTest {
+    fun `concurrent delete same session handles race condition`() = runBlocking {
         // Arrange
         val sessionId = "session-to-delete"
         val session = TestDataFactory.createSessionInfo(id = sessionId)
@@ -322,7 +322,7 @@ class OpenCodeServiceConcurrentTest {
     // ========== Concurrent Mixed Operations ==========
     
     @Test
-    fun `concurrent mixed operations maintain consistency`() = runTest {
+    fun `concurrent mixed operations maintain consistency`() = runBlocking {
         // Arrange
         val initialSessions = TestDataFactory.createSessionList(10)
         mockServer.setupSmartDispatcher(
@@ -387,7 +387,7 @@ class OpenCodeServiceConcurrentTest {
     
     @Test
     @org.junit.jupiter.api.Disabled("Flaky concurrent test - cache consistency check fails intermittently due to timing issues")
-    fun `concurrent cache updates maintain consistency`() = runTest {
+    fun `concurrent cache updates maintain consistency`() = runBlocking {
         // Arrange
         val sessions = TestDataFactory.createSessionList(5)
         mockServer.setupSmartDispatcher(sessions = sessions)
@@ -413,7 +413,7 @@ class OpenCodeServiceConcurrentTest {
     }
     
     @Test
-    fun `concurrent shareSession updates cache correctly`() = runTest {
+    fun `concurrent shareSession updates cache correctly`() = runBlocking {
         // Arrange
         val sessionId = "test-session"
         val session = TestDataFactory.createSessionInfo(id = sessionId)
@@ -447,7 +447,7 @@ class OpenCodeServiceConcurrentTest {
     }
     
     @Test
-    fun `concurrent getSession calls return consistent results`() = runTest {
+    fun `concurrent getSession calls return consistent results`() = runBlocking {
         // Arrange
         val sessionId = "test-session"
         val sessionInfo = TestDataFactory.createSessionInfo(id = sessionId)
@@ -477,7 +477,7 @@ class OpenCodeServiceConcurrentTest {
     // ========== Race Condition Tests ==========
     
     @Test
-    fun `concurrent create and list operations handle race conditions`() = runTest {
+    fun `concurrent create and list operations handle race conditions`() = runBlocking {
         // Arrange
         val initialSessions = TestDataFactory.createSessionList(3)
         mockServer.setupSmartDispatcher(sessions = initialSessions)
@@ -515,7 +515,7 @@ class OpenCodeServiceConcurrentTest {
     }
     
     @Test
-    fun `concurrent delete and list operations handle race conditions`() = runTest {
+    fun `concurrent delete and list operations handle race conditions`() = runBlocking {
         // Arrange
         val sessions = TestDataFactory.createSessionList(15)
         mockServer.setupSmartDispatcher(
@@ -559,7 +559,7 @@ class OpenCodeServiceConcurrentTest {
     // ========== Sequential Operations Test (Simpler Alternative) ==========
     
     @Test
-    fun `concurrent operations complete without blocking indefinitely`() = runTest {
+    fun `concurrent operations complete without blocking indefinitely`() = runBlocking {
         // Arrange
         val sessions = TestDataFactory.createSessionList(3)
         mockServer.setupSmartDispatcher(sessions = sessions)

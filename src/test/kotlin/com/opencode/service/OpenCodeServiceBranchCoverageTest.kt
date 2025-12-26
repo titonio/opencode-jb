@@ -7,7 +7,7 @@ import com.opencode.model.SessionInfo
 import com.opencode.test.MockOpenCodeServer
 import com.opencode.test.MockServerManager
 import com.opencode.test.TestDataFactory
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
@@ -158,7 +158,7 @@ class OpenCodeServiceBranchCoverageTest {
     // ========== Branch: listSessions - Cache TTL Logic ==========
     
     @Test
-    fun `listSessions uses cache when TTL not expired and cache not empty`() = runTest {
+    fun `listSessions uses cache when TTL not expired and cache not empty`() = runBlocking {
         // Branch: !forceRefresh && now - lastCacheUpdate < CACHE_TTL && sessionCache.isNotEmpty() (line 178)
         // True path - should return cached data
         
@@ -181,7 +181,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `listSessions refreshes when cache empty even within TTL`() = runTest {
+    fun `listSessions refreshes when cache empty even within TTL`() = runBlocking {
         // Branch: sessionCache.isNotEmpty() - false path in listSessions (line 178)
         
         val session = TestDataFactory.createSessionInfo("new-session")
@@ -197,7 +197,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `listSessions refreshes when TTL expired`() = runTest {
+    fun `listSessions refreshes when TTL expired`() = runBlocking {
         // Branch: now - lastCacheUpdate < CACHE_TTL - false path (line 178)
         
         val session = TestDataFactory.createSessionInfo("expired-session")
@@ -220,7 +220,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `listSessions with forceRefresh bypasses cache`() = runTest {
+    fun `listSessions with forceRefresh bypasses cache`() = runBlocking {
         // Branch: !forceRefresh - false path (line 178)
         
         val session = TestDataFactory.createSessionInfo("force-refresh-session")
@@ -240,7 +240,7 @@ class OpenCodeServiceBranchCoverageTest {
     // ========== Branch: refreshSessionCache - Server Port Check ==========
     
     @Test
-    fun `refreshSessionCache returns empty list when server port is null`() = runTest {
+    fun `refreshSessionCache returns empty list when server port is null`() = runBlocking {
         // Branch: server.getServerPort() ?: return@withContext emptyList() (line 186)
         
         // Create service with server manager that fails (returns null port)
@@ -258,7 +258,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `refreshSessionCache returns empty list on HTTP failure`() = runTest {
+    fun `refreshSessionCache returns empty list on HTTP failure`() = runBlocking {
         // Branch: if (!response.isSuccessful) return@withContext emptyList() (line 194)
         
         val errorServer = MockWebServer()
@@ -275,7 +275,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `refreshSessionCache returns empty list on null response body`() = runTest {
+    fun `refreshSessionCache returns empty list on null response body`() = runBlocking {
         // Branch: val body = response.body?.string() ?: return@withContext emptyList() (line 196)
         
         val emptyBodyServer = MockWebServer()
@@ -299,7 +299,7 @@ class OpenCodeServiceBranchCoverageTest {
     // ========== Branch: getSession - Null Checks ==========
     
     @Test
-    fun `getSession returns null when server port is null`() = runTest {
+    fun `getSession returns null when server port is null`() = runBlocking {
         // Branch: server.getServerPort() ?: return@withContext null (line 212)
         
         val nullPortManager = object : ServerManager {
@@ -315,7 +315,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `getSession returns null on HTTP failure`() = runTest {
+    fun `getSession returns null on HTTP failure`() = runBlocking {
         // Branch: if (!response.isSuccessful) return@withContext null (line 221)
         
         val errorServer = MockWebServer()
@@ -332,7 +332,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `getSession returns null on empty response body`() = runTest {
+    fun `getSession returns null on empty response body`() = runBlocking {
         // Branch: val body = response.body?.string() ?: return@withContext null (line 223)
         
         val emptyBodyServer = MockWebServer()
@@ -354,7 +354,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `getSession returns null when exception occurs`() = runTest {
+    fun `getSession returns null when exception occurs`() = runBlocking {
         // Branch: catch (e: Exception) null (line 226-228)
         
         val disconnectServer = MockWebServer()
@@ -373,7 +373,7 @@ class OpenCodeServiceBranchCoverageTest {
     // ========== Branch: deleteSession - Success/Failure Paths ==========
     
     @Test
-    fun `deleteSession returns false when server port is null`() = runTest {
+    fun `deleteSession returns false when server port is null`() = runBlocking {
         // Branch: server.getServerPort() ?: return@withContext false (line 236)
         
         val nullPortManager = object : ServerManager {
@@ -389,7 +389,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `deleteSession returns true and removes from cache on success`() = runTest {
+    fun `deleteSession returns true and removes from cache on success`() = runBlocking {
         // Branch: if (response.isSuccessful) - true path (line 244)
         
         val session = TestDataFactory.createSessionInfo("delete-success")
@@ -412,7 +412,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `deleteSession returns false on HTTP failure`() = runTest {
+    fun `deleteSession returns false on HTTP failure`() = runBlocking {
         // Branch: if (response.isSuccessful) - false path (line 244)
         
         val errorServer = MockWebServer()
@@ -429,7 +429,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `deleteSession returns false when exception occurs`() = runTest {
+    fun `deleteSession returns false when exception occurs`() = runBlocking {
         // Branch: catch (e: Exception) false (line 251-253)
         
         val disconnectServer = MockWebServer()
@@ -448,7 +448,7 @@ class OpenCodeServiceBranchCoverageTest {
     // ========== Branch: shareSession - Null Checks ==========
     
     @Test
-    fun `shareSession returns null when server port is null`() = runTest {
+    fun `shareSession returns null when server port is null`() = runBlocking {
         // Branch: server.getServerPort() ?: return@withContext null (line 260)
         
         val nullPortManager = object : ServerManager {
@@ -464,7 +464,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `shareSession returns null on HTTP failure`() = runTest {
+    fun `shareSession returns null on HTTP failure`() = runBlocking {
         // Branch: if (!response.isSuccessful) return@withContext null (line 269)
         
         val errorServer = MockWebServer()
@@ -481,7 +481,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `shareSession returns null on empty response body`() = runTest {
+    fun `shareSession returns null on empty response body`() = runBlocking {
         // Branch: val body = response.body?.string() ?: return@withContext null (line 271)
         
         val emptyBodyServer = MockWebServer()
@@ -503,7 +503,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `shareSession returns null when exception occurs`() = runTest {
+    fun `shareSession returns null when exception occurs`() = runBlocking {
         // Branch: catch (e: Exception) null (line 279-281)
         
         val disconnectServer = MockWebServer()
@@ -520,7 +520,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `shareSession updates cache on success`() = runTest {
+    fun `shareSession updates cache on success`() = runBlocking {
         // Branch: session.shareUrl (line 277) and cache update (line 275)
         
         val shareUrl = "https://opencode.ai/share/test-token"
@@ -542,7 +542,7 @@ class OpenCodeServiceBranchCoverageTest {
     // ========== Branch: unshareSession - Success/Failure Paths ==========
     
     @Test
-    fun `unshareSession returns false when server port is null`() = runTest {
+    fun `unshareSession returns false when server port is null`() = runBlocking {
         // Branch: server.getServerPort() ?: return@withContext false (line 288)
         
         val nullPortManager = object : ServerManager {
@@ -558,7 +558,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `unshareSession returns true and refreshes cache on success`() = runTest {
+    fun `unshareSession returns true and refreshes cache on success`() = runBlocking {
         // Branch: if (response.isSuccessful) - true path (line 297)
         
         val unsharedSession = TestDataFactory.createSessionInfo("unshare-test")
@@ -574,7 +574,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `unshareSession returns false on HTTP failure`() = runTest {
+    fun `unshareSession returns false on HTTP failure`() = runBlocking {
         // Branch: if (response.isSuccessful) - false path (line 297)
         
         val errorServer = MockWebServer()
@@ -591,7 +591,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `unshareSession returns false when exception occurs`() = runTest {
+    fun `unshareSession returns false when exception occurs`() = runBlocking {
         // Branch: catch (e: Exception) false (line 305-307)
         
         val disconnectServer = MockWebServer()
@@ -610,7 +610,7 @@ class OpenCodeServiceBranchCoverageTest {
     // ========== Branch: cleanupOldSessions - Session Count Check ==========
     
     @Test
-    fun `cleanupOldSessions does nothing when session count at limit`() = runTest {
+    fun `cleanupOldSessions does nothing when session count at limit`() = runBlocking {
         // Branch: if (sessions.size <= MAX_SESSIONS_TO_KEEP) return (line 315)
         
         // Create exactly 10 sessions (the limit)
@@ -628,7 +628,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `cleanupOldSessions deletes old sessions when over limit`() = runTest {
+    fun `cleanupOldSessions deletes old sessions when over limit`() = runBlocking {
         // Branch: if (sessions.size <= MAX_SESSIONS_TO_KEEP) - false path (line 315)
         
         // Create 12 sessions (over the limit of 10)
@@ -783,7 +783,7 @@ class OpenCodeServiceBranchCoverageTest {
     // ========== Branch: LOG Debug Checks ==========
     
     @Test
-    fun `createSession logs debug info when debug enabled`() = runTest {
+    fun `createSession logs debug info when debug enabled`() = runBlocking {
         // Branch: if (LOG.isDebugEnabled) (line 139)
         
         val session = TestDataFactory.createSessionResponse("debug-test")
@@ -802,7 +802,7 @@ class OpenCodeServiceBranchCoverageTest {
     // ========== Branch: createSession - Empty Response Body ==========
     
     @Test
-    fun `createSession throws IOException on empty response body`() = runTest {
+    fun `createSession throws IOException on empty response body`() = runBlocking {
         // Branch: val body = response.body?.string() ?: throw IOException("Empty response") (line 161)
         
         val emptyBodyServer = MockWebServer()
@@ -873,7 +873,7 @@ class OpenCodeServiceBranchCoverageTest {
     // ========== NEW TESTS FOR REMAINING BRANCHES ==========
     
     @Test
-    fun `listSessions cache TTL edge case - exactly at expiry boundary`() = runTest {
+    fun `listSessions cache TTL edge case - exactly at expiry boundary`() = runBlocking {
         val session = TestDataFactory.createSessionInfo("ttl-edge")
         mockServer.setupSmartDispatcher(sessions = listOf(session))
         
@@ -892,7 +892,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `listSessions cache TTL edge case - just before expiry`() = runTest {
+    fun `listSessions cache TTL edge case - just before expiry`() = runBlocking {
         val session = TestDataFactory.createSessionInfo("ttl-before")
         mockServer.setupSmartDispatcher(sessions = listOf(session))
         
@@ -911,7 +911,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `listSessions cache TTL edge case - just after expiry`() = runTest {
+    fun `listSessions cache TTL edge case - just after expiry`() = runBlocking {
         val session = TestDataFactory.createSessionInfo("ttl-after")
         mockServer.setupSmartDispatcher(sessions = listOf(session))
         
@@ -930,7 +930,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `cleanupOldSessions edge case - exactly 11 sessions deletes 1`() = runTest {
+    fun `cleanupOldSessions edge case - exactly 11 sessions deletes 1`() = runBlocking {
         val now = System.currentTimeMillis()
         val allSessions = mutableListOf<SessionInfo>()
         
@@ -957,7 +957,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `cleanupOldSessions edge case - zero sessions does nothing`() = runTest {
+    fun `cleanupOldSessions edge case - zero sessions does nothing`() = runBlocking {
         mockServer.setupSmartDispatcher(sessions = emptyList())
         
         val result = service.listSessions(forceRefresh = true)
@@ -968,7 +968,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `cleanupOldSessions handles deletion failures gracefully`() = runTest {
+    fun `cleanupOldSessions handles deletion failures gracefully`() = runBlocking {
         val now = System.currentTimeMillis()
         val sessions = (1..12).map { i ->
             TestDataFactory.createSessionInfo(
@@ -1077,7 +1077,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `getOrStartSharedServer returns null when server fails to start`() = runTest {
+    fun `getOrStartSharedServer returns null when server fails to start`() = runBlocking {
         val failingServerManager = object : ServerManager {
             override suspend fun getOrStartServer(): Int? = null
             override fun getServerPort(): Int? = null
@@ -1092,7 +1092,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `createSession throws IOException when server fails to start`() = runTest {
+    fun `createSession throws IOException when server fails to start`() = runBlocking {
         val failingServerManager = object : ServerManager {
             override suspend fun getOrStartServer(): Int? = null
             override fun getServerPort(): Int? = null
@@ -1111,7 +1111,7 @@ class OpenCodeServiceBranchCoverageTest {
     }
     
     @Test
-    fun `unshareSession cache refresh - getSession returns null`() = runTest {
+    fun `unshareSession cache refresh - getSession returns null`() = runBlocking {
         // Covers branch: getSession(sessionId)?.let in unshareSession (line 299)
         mockServer.setupSmartDispatcher(
             getSessionResponse = null,

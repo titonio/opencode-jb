@@ -7,7 +7,7 @@ import com.opencode.test.TestDataFactory
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.*
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -32,13 +32,13 @@ class SessionListViewModelTest {
     private lateinit var mockService: OpenCodeService
     private lateinit var mockCallback: SessionListViewModel.ViewCallback
     private lateinit var viewModel: SessionListViewModel
-    private lateinit var testDispatcher: TestDispatcher
-    private lateinit var testScope: TestScope
+    
+    private lateinit var testScope: kotlinx.coroutines.CoroutineScope
     
     @BeforeEach
     fun setUp() {
-        testDispatcher = StandardTestDispatcher()
-        testScope = TestScope(testDispatcher)
+        
+        testScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
         mockService = mock()
         mockCallback = mock()
         viewModel = SessionListViewModel(mockService, testScope)
@@ -48,7 +48,7 @@ class SessionListViewModelTest {
     // ========== Loading Tests ==========
     
     @Test
-    fun `loadSessions calls service and notifies callback with results`() = testScope.runTest {
+    fun `loadSessions calls service and notifies callback with results`() = runBlocking {
         // Arrange
         val sessions = listOf(
             TestDataFactory.createSessionInfo(id = "session-1", title = "Session 1"),
@@ -58,7 +58,7 @@ class SessionListViewModelTest {
         
         // Act
         viewModel.loadSessions()
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockService).listSessions(forceRefresh = true)
@@ -67,26 +67,26 @@ class SessionListViewModelTest {
     }
     
     @Test
-    fun `loadSessions handles errors gracefully`() = testScope.runTest {
+    fun `loadSessions handles errors gracefully`() = runBlocking {
         // Arrange
         whenever(mockService.listSessions(any())).thenThrow(RuntimeException("Network error"))
         
         // Act
         viewModel.loadSessions()
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockCallback).onError(argThat { contains("Failed to load sessions") })
     }
     
     @Test
-    fun `loadSessions with forceRefresh false passes flag to service`() = testScope.runTest {
+    fun `loadSessions with forceRefresh false passes flag to service`() = runBlocking {
         // Arrange
         whenever(mockService.listSessions(any())).thenReturn(emptyList())
         
         // Act
         viewModel.loadSessions(forceRefresh = false)
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockService).listSessions(forceRefresh = false)
@@ -95,7 +95,7 @@ class SessionListViewModelTest {
     // ========== Session Creation Tests ==========
     
     @Test
-    fun `createSession creates new session and auto-selects it`() = testScope.runTest {
+    fun `createSession creates new session and auto-selects it`() = runBlocking {
         // Arrange
         val newSessionId = "new-session"
         val newSession = TestDataFactory.createSessionInfo(id = newSessionId, title = "New Session")
@@ -104,7 +104,7 @@ class SessionListViewModelTest {
         
         // Act
         viewModel.createSession("New Session")
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockService).createSession("New Session")
@@ -114,27 +114,27 @@ class SessionListViewModelTest {
     }
     
     @Test
-    fun `createSession with null title passes null to service`() = testScope.runTest {
+    fun `createSession with null title passes null to service`() = runBlocking {
         // Arrange
         whenever(mockService.createSession(isNull())).thenReturn("session-id")
         whenever(mockService.listSessions(any())).thenReturn(emptyList())
         
         // Act
         viewModel.createSession(null)
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockService).createSession(isNull())
     }
     
     @Test
-    fun `createSession handles errors`() = testScope.runTest {
+    fun `createSession handles errors`() = runBlocking {
         // Arrange
         whenever(mockService.createSession(any())).thenThrow(RuntimeException("Create failed"))
         
         // Act
         viewModel.createSession("Test")
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockCallback).onError(argThat { contains("Failed to create session") })
@@ -143,7 +143,7 @@ class SessionListViewModelTest {
     // ========== Session Deletion Tests ==========
     
     @Test
-    fun `deleteSession deletes and reloads sessions`() = testScope.runTest {
+    fun `deleteSession deletes and reloads sessions`() = runBlocking {
         // Arrange
         val session = TestDataFactory.createSessionInfo(id = "delete-me")
         whenever(mockService.deleteSession(any())).thenReturn(true)
@@ -151,7 +151,7 @@ class SessionListViewModelTest {
         
         // Act
         viewModel.deleteSession(session)
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockService).deleteSession("delete-me")
@@ -160,14 +160,14 @@ class SessionListViewModelTest {
     }
     
     @Test
-    fun `deleteSession shows error when service fails`() = testScope.runTest {
+    fun `deleteSession shows error when service fails`() = runBlocking {
         // Arrange
         val session = TestDataFactory.createSessionInfo(id = "session")
         whenever(mockService.deleteSession(any())).thenReturn(false)
         
         // Act
         viewModel.deleteSession(session)
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockCallback).onError(argThat { contains("Failed to delete session") })
@@ -175,14 +175,14 @@ class SessionListViewModelTest {
     }
     
     @Test
-    fun `deleteSession handles exceptions`() = testScope.runTest {
+    fun `deleteSession handles exceptions`() = runBlocking {
         // Arrange
         val session = TestDataFactory.createSessionInfo(id = "session")
         whenever(mockService.deleteSession(any())).thenThrow(RuntimeException("Delete error"))
         
         // Act
         viewModel.deleteSession(session)
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockCallback).onError(argThat { contains("Failed to delete session") })
@@ -191,7 +191,7 @@ class SessionListViewModelTest {
     // ========== Share Session Tests ==========
     
     @Test
-    fun `shareSession for unshared session creates share and notifies`() = testScope.runTest {
+    fun `shareSession for unshared session creates share and notifies`() = runBlocking {
         // Arrange
         val session = TestDataFactory.createSessionInfo(id = "session")
         val shareUrl = "https://opencode.ai/share/abc123"
@@ -202,7 +202,7 @@ class SessionListViewModelTest {
         
         // Act
         viewModel.shareSession(session)
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockService).shareSession("session")
@@ -211,14 +211,14 @@ class SessionListViewModelTest {
     }
     
     @Test
-    fun `shareSession for already shared session returns existing URL`() = testScope.runTest {
+    fun `shareSession for already shared session returns existing URL`() = runBlocking {
         // Arrange
         val shareUrl = "https://opencode.ai/share/existing"
         val sharedSession = TestDataFactory.createSharedSession(id = "session", shareUrl = shareUrl)
         
         // Act
         viewModel.shareSession(sharedSession)
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockService, never()).shareSession(any())
@@ -227,14 +227,14 @@ class SessionListViewModelTest {
     }
     
     @Test
-    fun `shareSession handles null response from service`() = testScope.runTest {
+    fun `shareSession handles null response from service`() = runBlocking {
         // Arrange
         val session = TestDataFactory.createSessionInfo(id = "session")
         whenever(mockService.shareSession(any())).thenReturn(null)
         
         // Act
         viewModel.shareSession(session)
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockCallback).onError(argThat { contains("Failed to share session") })
@@ -243,7 +243,7 @@ class SessionListViewModelTest {
     // ========== Unshare Session Tests ==========
     
     @Test
-    fun `unshareSession unshares and reloads`() = testScope.runTest {
+    fun `unshareSession unshares and reloads`() = runBlocking {
         // Arrange
         val shareUrl = "https://opencode.ai/share/test"
         val session = TestDataFactory.createSharedSession(id = "session", shareUrl = shareUrl)
@@ -252,7 +252,7 @@ class SessionListViewModelTest {
         
         // Act
         viewModel.unshareSession(session)
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockService).unshareSession("session")
@@ -260,14 +260,14 @@ class SessionListViewModelTest {
     }
     
     @Test
-    fun `unshareSession handles failure`() = testScope.runTest {
+    fun `unshareSession handles failure`() = runBlocking {
         // Arrange
         val session = TestDataFactory.createSessionInfo(id = "session")
         whenever(mockService.unshareSession(any())).thenReturn(false)
         
         // Act
         viewModel.unshareSession(session)
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockCallback).onError(argThat { contains("Failed to unshare session") })
@@ -354,7 +354,7 @@ class SessionListViewModelTest {
     // ========== Edge Case Tests ==========
     
     @Test
-    fun `createSession when new session not found in reload does not select`() = testScope.runTest {
+    fun `createSession when new session not found in reload does not select`() = runBlocking {
         // Arrange - service returns different session ID than expected
         val newSessionId = "new-session"
         val differentSession = TestDataFactory.createSessionInfo(id = "different-id", title = "Different")
@@ -363,7 +363,7 @@ class SessionListViewModelTest {
         
         // Act
         viewModel.createSession("New Session")
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockService).createSession("New Session")
@@ -374,35 +374,35 @@ class SessionListViewModelTest {
     }
     
     @Test
-    fun `shareSession handles exception during share`() = testScope.runTest {
+    fun `shareSession handles exception during share`() = runBlocking {
         // Arrange
         val session = TestDataFactory.createSessionInfo(id = "session")
         whenever(mockService.shareSession(any())).thenThrow(RuntimeException("Share error"))
         
         // Act
         viewModel.shareSession(session)
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockCallback).onError(argThat { contains("Failed to share session") && contains("Share error") })
     }
     
     @Test
-    fun `unshareSession handles exception during unshare`() = testScope.runTest {
+    fun `unshareSession handles exception during unshare`() = runBlocking {
         // Arrange
         val session = TestDataFactory.createSessionInfo(id = "session")
         whenever(mockService.unshareSession(any())).thenThrow(RuntimeException("Unshare error"))
         
         // Act
         viewModel.unshareSession(session)
-        advanceUntilIdle()
+        
         
         // Assert
         verify(mockCallback).onError(argThat { contains("Failed to unshare session") && contains("Unshare error") })
     }
     
     @Test
-    fun `loadSessions preserves previous sessions on error`() = testScope.runTest {
+    fun `loadSessions preserves previous sessions on error`() = runBlocking {
         // Arrange - first load succeeds, second fails
         val sessions = listOf(TestDataFactory.createSessionInfo(id = "session-1"))
         whenever(mockService.listSessions(any()))
@@ -411,12 +411,12 @@ class SessionListViewModelTest {
         
         // Act - first load
         viewModel.loadSessions()
-        advanceUntilIdle()
+        
         assertEquals(sessions, viewModel.getSessions())
         
         // Act - second load fails
         viewModel.loadSessions()
-        advanceUntilIdle()
+        
         
         // Assert - should still have old sessions
         assertEquals(sessions, viewModel.getSessions())
@@ -436,7 +436,7 @@ class SessionListViewModelTest {
     }
     
     @Test
-    fun `callback can be set and receives updates`() = testScope.runTest {
+    fun `callback can be set and receives updates`() = runBlocking {
         // Arrange
         val newCallback: SessionListViewModel.ViewCallback = mock()
         val sessions = listOf(TestDataFactory.createSessionInfo(id = "session-1"))
@@ -445,7 +445,7 @@ class SessionListViewModelTest {
         // Act
         viewModel.setCallback(newCallback)
         viewModel.loadSessions()
-        advanceUntilIdle()
+        
         
         // Assert - new callback receives updates, old doesn't
         verify(newCallback).onSessionsLoaded(sessions)
@@ -455,7 +455,7 @@ class SessionListViewModelTest {
     // ========== Null Callback Tests (branch coverage) ==========
     
     @Test
-    fun `loadSessions works without callback set`() = testScope.runTest {
+    fun `loadSessions works without callback set`() = runBlocking {
         // Arrange
         val viewModelNoCallback = SessionListViewModel(mockService, testScope)
         val sessions = listOf(TestDataFactory.createSessionInfo(id = "session-1"))
@@ -463,21 +463,21 @@ class SessionListViewModelTest {
         
         // Act - should not throw even without callback
         viewModelNoCallback.loadSessions()
-        advanceUntilIdle()
+        
         
         // Assert - sessions should still be loaded
         assertEquals(sessions, viewModelNoCallback.getSessions())
     }
     
     @Test
-    fun `loadSessions handles error without callback set`() = testScope.runTest {
+    fun `loadSessions handles error without callback set`() = runBlocking {
         // Arrange
         val viewModelNoCallback = SessionListViewModel(mockService, testScope)
         whenever(mockService.listSessions(any())).thenThrow(RuntimeException("Network error"))
         
         // Act - should not throw even without callback
         viewModelNoCallback.loadSessions()
-        advanceUntilIdle()
+        
         
         // Assert - no crash, sessions remain empty
         assertTrue(viewModelNoCallback.getSessions().isEmpty())
@@ -497,7 +497,7 @@ class SessionListViewModelTest {
     }
     
     @Test
-    fun `createSession works without callback set`() = testScope.runTest {
+    fun `createSession works without callback set`() = runBlocking {
         // Arrange
         val viewModelNoCallback = SessionListViewModel(mockService, testScope)
         whenever(mockService.createSession(any())).thenReturn("new-session")
@@ -505,14 +505,14 @@ class SessionListViewModelTest {
         
         // Act - should not throw even without callback
         viewModelNoCallback.createSession("Test")
-        advanceUntilIdle()
+        
         
         // Assert - no crash
         assertTrue(viewModelNoCallback.getSessions().isEmpty())
     }
     
     @Test
-    fun `deleteSession works without callback set`() = testScope.runTest {
+    fun `deleteSession works without callback set`() = runBlocking {
         // Arrange
         val viewModelNoCallback = SessionListViewModel(mockService, testScope)
         val session = TestDataFactory.createSessionInfo(id = "session")
@@ -521,14 +521,14 @@ class SessionListViewModelTest {
         
         // Act - should not throw even without callback
         viewModelNoCallback.deleteSession(session)
-        advanceUntilIdle()
+        
         
         // Assert - no crash
         assertTrue(viewModelNoCallback.getSessions().isEmpty())
     }
     
     @Test
-    fun `shareSession works without callback set`() = testScope.runTest {
+    fun `shareSession works without callback set`() = runBlocking {
         // Arrange
         val viewModelNoCallback = SessionListViewModel(mockService, testScope)
         val session = TestDataFactory.createSessionInfo(id = "session")
@@ -537,14 +537,14 @@ class SessionListViewModelTest {
         
         // Act - should not throw even without callback
         viewModelNoCallback.shareSession(session)
-        advanceUntilIdle()
+        
         
         // Assert - no crash
         assertTrue(viewModelNoCallback.getSessions().isEmpty())
     }
     
     @Test
-    fun `unshareSession works without callback set`() = testScope.runTest {
+    fun `unshareSession works without callback set`() = runBlocking {
         // Arrange
         val viewModelNoCallback = SessionListViewModel(mockService, testScope)
         val session = TestDataFactory.createSessionInfo(id = "session")
@@ -553,7 +553,7 @@ class SessionListViewModelTest {
         
         // Act - should not throw even without callback
         viewModelNoCallback.unshareSession(session)
-        advanceUntilIdle()
+        
         
         // Assert - no crash
         assertTrue(viewModelNoCallback.getSessions().isEmpty())

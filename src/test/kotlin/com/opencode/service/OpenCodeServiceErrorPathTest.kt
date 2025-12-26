@@ -4,7 +4,7 @@ import com.google.gson.Gson
 import com.intellij.openapi.project.Project
 import com.opencode.test.MockServerManager
 import com.opencode.test.TestDataFactory
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -42,7 +42,7 @@ class OpenCodeServiceErrorPathTest {
     // ========== Empty Response Bodies ==========
     
     @Test
-    fun `listSessions handles empty response body`() = runTest {
+    fun `listSessions handles empty response body`() = runBlocking {
         // Arrange
         val emptyServer = MockWebServer()
         emptyServer.dispatcher = object : Dispatcher() {
@@ -68,7 +68,7 @@ class OpenCodeServiceErrorPathTest {
     }
     
     @Test
-    fun `getSession handles empty response body`() = runTest {
+    fun `getSession handles empty response body`() = runBlocking {
         // Arrange
         val emptyServer = MockWebServer()
         emptyServer.dispatcher = object : Dispatcher() {
@@ -94,7 +94,7 @@ class OpenCodeServiceErrorPathTest {
     }
     
     @Test
-    fun `shareSession handles empty response body`() = runTest {
+    fun `shareSession handles empty response body`() = runBlocking {
         // Arrange
         val emptyServer = MockWebServer()
         emptyServer.dispatcher = object : Dispatcher() {
@@ -122,7 +122,7 @@ class OpenCodeServiceErrorPathTest {
     // ========== Invalid/Malformed Session IDs ==========
     
     @Test
-    fun `deleteSession with empty session ID handles gracefully`() = runTest {
+    fun `deleteSession with empty session ID handles gracefully`() = runBlocking {
         // Arrange
         val server = MockWebServer()
         server.dispatcher = object : Dispatcher() {
@@ -148,7 +148,7 @@ class OpenCodeServiceErrorPathTest {
     }
     
     @Test
-    fun `getSession with special characters in ID handles gracefully`() = runTest {
+    fun `getSession with special characters in ID handles gracefully`() = runBlocking {
         // Arrange
         val server = MockWebServer()
         server.dispatcher = object : Dispatcher() {
@@ -178,7 +178,7 @@ class OpenCodeServiceErrorPathTest {
     }
     
     @Test
-    fun `shareSession with non-existent session ID returns null`() = runTest {
+    fun `shareSession with non-existent session ID returns null`() = runBlocking {
         // Arrange
         val server = MockWebServer()
         server.dispatcher = object : Dispatcher() {
@@ -206,8 +206,7 @@ class OpenCodeServiceErrorPathTest {
     // ========== Additional HTTP Error Codes ==========
     
     @Test
-    @Disabled("Test causes LOG.error which triggers TestLoggerAssertionError - error handling works correctly")
-    fun `createSession handles 400 Bad Request`() = runTest {
+    fun `createSession handles 400 Bad Request`() = runBlocking {
         // Arrange
         val server = MockWebServer()
         server.dispatcher = object : Dispatcher() {
@@ -235,8 +234,7 @@ class OpenCodeServiceErrorPathTest {
     }
     
     @Test
-    @Disabled("Test causes LOG.error which triggers TestLoggerAssertionError - error handling works correctly")
-    fun `createSession handles 401 Unauthorized`() = runTest {
+    fun `createSession handles 401 Unauthorized`() = runBlocking {
         // Arrange
         val server = MockWebServer()
         server.dispatcher = object : Dispatcher() {
@@ -264,8 +262,7 @@ class OpenCodeServiceErrorPathTest {
     }
     
     @Test
-    @Disabled("Test causes LOG.error which triggers TestLoggerAssertionError - error handling works correctly")
-    fun `createSession handles 502 Bad Gateway`() = runTest {
+    fun `createSession handles 502 Bad Gateway`() = runBlocking {
         // Arrange
         val server = MockWebServer()
         server.dispatcher = object : Dispatcher() {
@@ -293,8 +290,7 @@ class OpenCodeServiceErrorPathTest {
     }
     
     @Test
-    @Disabled("Test causes LOG.error which triggers TestLoggerAssertionError - error handling works correctly")
-    fun `createSession handles 503 Service Unavailable`() = runTest {
+    fun `createSession handles 503 Service Unavailable`() = runBlocking {
         // Arrange
         val server = MockWebServer()
         server.dispatcher = object : Dispatcher() {
@@ -324,7 +320,7 @@ class OpenCodeServiceErrorPathTest {
     // ========== Network Connection Errors ==========
     
     @Test
-    fun `listSessions handles connection refused gracefully`() = runTest {
+    fun `listSessions handles connection refused gracefully`() = runBlocking {
         // Arrange - No server running on port
         val serverManager = MockServerManager(mockPort = 9999, shouldSucceed = true)
         val service = OpenCodeService(mockProject, serverManager)
@@ -345,7 +341,7 @@ class OpenCodeServiceErrorPathTest {
     }
     
     @Test
-    fun `getSession handles connection reset`() = runTest {
+    fun `getSession handles connection reset`() = runBlocking {
         // Arrange - Server that disconnects immediately
         val disconnectServer = MockWebServer()
         disconnectServer.dispatcher = object : Dispatcher() {
@@ -369,7 +365,7 @@ class OpenCodeServiceErrorPathTest {
     }
     
     @Test
-    fun `deleteSession handles connection reset gracefully`() = runTest {
+    fun `deleteSession handles connection reset gracefully`() = runBlocking {
         // Arrange - Server that doesn't respond
         val disconnectServer = MockWebServer()
         disconnectServer.dispatcher = object : Dispatcher() {
@@ -397,7 +393,7 @@ class OpenCodeServiceErrorPathTest {
     // ========== Network Timeouts ==========
     
     @Test
-    fun `shareSession handles slow response timeout`() = runTest {
+    fun `shareSession handles slow response timeout`() = runBlocking {
         // Arrange - Server responds very slowly
         val slowServer = MockWebServer()
         slowServer.dispatcher = object : Dispatcher() {
@@ -425,7 +421,7 @@ class OpenCodeServiceErrorPathTest {
     // ========== State Consistency After Errors ==========
     
     @Test
-    fun `service remains usable after listSessions fails`() = runTest {
+    fun `service remains usable after listSessions fails`() = runBlocking {
         // Arrange - Server that fails then succeeds
         val testSession = TestDataFactory.createSessionInfo("session-123", "Test Session")
         var requestCount = 0
@@ -464,7 +460,7 @@ class OpenCodeServiceErrorPathTest {
     // ========== Boundary Value Handling ==========
     
     @Test
-    fun `createSession with null title uses default`() = runTest {
+    fun `createSession with null title uses default`() = runBlocking {
         // Arrange
         val server = MockWebServer()
         server.dispatcher = object : Dispatcher() {
@@ -503,7 +499,7 @@ class OpenCodeServiceErrorPathTest {
     }
     
     @Test
-    fun `createSession with empty string title works`() = runTest {
+    fun `createSession with empty string title works`() = runBlocking {
         // Arrange
         val server = MockWebServer()
         server.dispatcher = object : Dispatcher() {
@@ -542,7 +538,7 @@ class OpenCodeServiceErrorPathTest {
     }
     
     @Test
-    fun `createSession with extremely long title works`() = runTest {
+    fun `createSession with extremely long title works`() = runBlocking {
         // Arrange - Very long title (10,000 characters)
         val longTitle = "X".repeat(10000)
         

@@ -173,19 +173,23 @@ class OpenCodeEditorPanel(
         monitoringJob = ApplicationManager.getApplication().executeOnPooledThread {
             LOG.debug("Process monitoring thread started for editor panel")
             
-            while (viewModel.isMonitoring && viewModel.getState() == OpenCodeEditorPanelViewModel.State.RUNNING) {
-                Thread.sleep(1000)
-                
-                val isAlive = checkIfTerminalAlive()
-                
-                if (!isAlive) {
-                    LOG.info("OpenCode editor terminal process has exited")
+            try {
+                while (viewModel.isMonitoring && viewModel.getState() == OpenCodeEditorPanelViewModel.State.RUNNING) {
+                    Thread.sleep(1000)
                     
-                    ApplicationManager.getApplication().invokeLater {
-                        handleProcessExit()
+                    val isAlive = checkIfTerminalAlive()
+                    
+                    if (!isAlive) {
+                        LOG.info("OpenCode editor terminal process has exited")
+                        
+                        ApplicationManager.getApplication().invokeLater {
+                            handleProcessExit()
+                        }
+                        break
                     }
-                    break
                 }
+            } catch (e: InterruptedException) {
+                LOG.debug("Process monitoring thread interrupted")
             }
             
             LOG.debug("Process monitoring thread stopped for editor panel")

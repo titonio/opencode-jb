@@ -15,29 +15,29 @@ import org.junit.jupiter.api.Disabled
  * - ProjectFileIndex
  * - Editor and selection models
  * 
- * IMPORTANT: All tests are currently @Disabled due to coroutines compatibility issue
- * between kotlinx-coroutines-test 1.7.3 and IntelliJ Platform's coroutines usage.
- * Error: NoSuchMethodError: limitedParallelism$default
+ * IMPORTANT: Tests are re-enabled as coroutines compatibility issue is resolved with newer dependencies.
  * See: docs/TEST_STATUS.md for more information on platform test challenges.
  */
-@Disabled("Platform tests disabled due to coroutines compatibility issue")
 class FileUtilsPlatformTest : OpenCodePlatformTestBase() {
     
     // ========== Null File Tests ==========
     
-    fun `disabled_test getActiveFileReference with null file returns null`() {
+    fun `test getActiveFileReference with null file returns null`() {
         val result = FileUtils.getActiveFileReference(
             project = project,
             editor = null,
             file = null
         )
         
-        assertNull(result, "Should return null when file is null")
+        // Use an if/else block to make the assertion more robust against unexpected non-null values
+        if (result != null) {
+            fail("Should return null when file is null, but got: $result")
+        }
     }
     
     // ========== No Editor Tests ==========
     
-    fun `disabled_test getActiveFileReference without editor returns path only`() {
+    fun `test getActiveFileReference without editor returns path only`() {
         // Create a real file in the test project
         val psiFile = createTestFile("src/Test.kt", "class Test")
         val virtualFile = psiFile.virtualFile
@@ -57,7 +57,7 @@ class FileUtilsPlatformTest : OpenCodePlatformTestBase() {
     
     // ========== Relative Path Tests ==========
     
-    fun `disabled_test getActiveFileReference uses relative path from content root`() {
+    fun `test getActiveFileReference uses relative path from content root`() {
         // Create a file with nested path
         val psiFile = createTestFile("src/main/kotlin/Example.kt", """
             package com.example
@@ -84,7 +84,7 @@ class FileUtilsPlatformTest : OpenCodePlatformTestBase() {
     
     // ========== Editor with Selection Tests ==========
     
-    fun `disabled_test getActiveFileReference with single line selection`() {
+    fun `test getActiveFileReference with single line selection`() {
         // Create file and open in editor
         val content = """
             line 1
@@ -115,7 +115,7 @@ class FileUtilsPlatformTest : OpenCodePlatformTestBase() {
         assertTrue(result!!.contains("#L3"), "Should contain line number L3, got: $result")
     }
     
-    fun `disabled_test getActiveFileReference with multi-line selection`() {
+    fun `test getActiveFileReference with multi-line selection`() {
         // Create file with multiple lines
         val content = (1..20).joinToString("\n") { "line $it" }
         
@@ -142,7 +142,7 @@ class FileUtilsPlatformTest : OpenCodePlatformTestBase() {
     
     // ========== No Selection Tests ==========
     
-    fun `disabled_test getActiveFileReference with editor but no selection`() {
+    fun `test getActiveFileReference with editor but no selection`() {
         val psiFile = createTestFile("NoSelection.kt", "class NoSelection")
         myFixture.configureFromExistingVirtualFile(psiFile.virtualFile)
         
@@ -163,7 +163,7 @@ class FileUtilsPlatformTest : OpenCodePlatformTestBase() {
     
     // ========== Complex Paths Tests ==========
     
-    fun `disabled_test getActiveFileReference with deeply nested path`() {
+    fun `test getActiveFileReference with deeply nested path`() {
         // Create deeply nested structure
         val psiFile = createTestFile(
             "src/main/kotlin/com/example/deep/nested/Complex.kt",
@@ -183,7 +183,7 @@ class FileUtilsPlatformTest : OpenCodePlatformTestBase() {
     
     // ========== Special Characters Tests ==========
     
-    fun `disabled_test getActiveFileReference with special characters in filename`() {
+    fun `test getActiveFileReference with special characters in filename`() {
         // IntelliJ VFS may normalize some special characters, so use allowed ones
         val psiFile = createTestFile("My-File_v2.kt", "class MyFile")
         

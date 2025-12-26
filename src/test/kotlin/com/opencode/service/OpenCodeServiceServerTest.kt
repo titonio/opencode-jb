@@ -2,7 +2,7 @@ package com.opencode.service
 
 import com.intellij.openapi.project.Project
 import com.opencode.test.MockServerManager
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
@@ -50,7 +50,7 @@ class OpenCodeServiceServerTest {
     // ========== Service Integration with ServerManager ==========
     
     @Test
-    fun `getOrStartSharedServer delegates to ServerManager and returns port`() = runTest {
+    fun `getOrStartSharedServer delegates to ServerManager and returns port`() = runBlocking {
         // Arrange
         val mockPort = 3000
         val mockServerManager = MockServerManager(mockPort = mockPort, shouldSucceed = true)
@@ -65,7 +65,7 @@ class OpenCodeServiceServerTest {
     }
     
     @Test
-    fun `getOrStartSharedServer returns null when ServerManager fails`() = runTest {
+    fun `getOrStartSharedServer returns null when ServerManager fails`() = runBlocking {
         // Arrange
         val mockServerManager = MockServerManager(shouldSucceed = false)
         val service = OpenCodeService(mockProject, mockServerManager)
@@ -78,7 +78,7 @@ class OpenCodeServiceServerTest {
     }
     
     @Test
-    fun `isServerRunning delegates to ServerManager`() = runTest {
+    fun `isServerRunning delegates to ServerManager`() = runBlocking {
         // Arrange
         val mockPort = 3000
         val mockServerManager = MockServerManager(mockPort = mockPort, shouldSucceed = true)
@@ -95,7 +95,7 @@ class OpenCodeServiceServerTest {
     }
     
     @Test
-    fun `isServerRunning returns false for wrong port`() = runTest {
+    fun `isServerRunning returns false for wrong port`() = runBlocking {
         // Arrange
         val mockPort = 3000
         val wrongPort = 4000

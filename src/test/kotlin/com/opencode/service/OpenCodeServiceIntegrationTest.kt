@@ -10,7 +10,7 @@ import com.opencode.test.TestDataFactory
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -50,6 +50,7 @@ class OpenCodeServiceIntegrationTest {
         
         // Create service with injected mock server manager
         service = OpenCodeService(mockProject, mockServerManager)
+        service.disablePlatformInteractions = true
     }
     
     @AfterEach
@@ -74,7 +75,7 @@ class OpenCodeServiceIntegrationTest {
     // ========== Integration Test 1: Full Session Lifecycle ==========
     
     @Test
-    fun `test full session lifecycle - create list share delete`() = runTest {
+    fun `test full session lifecycle - create list share delete`() = runBlocking {
         // This test verifies that a complete workflow of creating, listing, sharing,
         // and deleting a session works end-to-end
         
@@ -140,7 +141,7 @@ class OpenCodeServiceIntegrationTest {
     // ========== Integration Test 2: Multiple Sessions with Cleanup ==========
     
     @Test
-    fun `test multiple sessions with cleanup - creates 15 sessions and verifies only 10 kept`() = runTest {
+    fun `test multiple sessions with cleanup - creates 15 sessions and verifies only 10 kept`() = runBlocking {
         // This test verifies that the automatic cleanup mechanism works correctly
         // when creating many sessions
         
@@ -203,7 +204,7 @@ class OpenCodeServiceIntegrationTest {
     // ========== Integration Test 3: Concurrent Session Operations ==========
     
     @Test
-    fun `test concurrent session operations - thread safety`() = runTest {
+    fun `test concurrent session operations - thread safety`() = runBlocking {
         // This test verifies that the service handles concurrent operations correctly
         // and maintains thread safety
         
@@ -279,20 +280,10 @@ class OpenCodeServiceIntegrationTest {
         assertTrue(mockServer.getRequestCount() > 0)
     }
     
-    // ========== Integration Test 4: Server Recovery After Crash ==========
+    // ========== Integration Test 4: Editor Registration Integration ==========
     
     @Test
-    @Disabled("Requires refactoring - direct server state manipulation no longer available")
-    fun `test server recovery after crash - restarts server if died`() = runTest {
-        // This test needs refactoring to work with the new ServerManager architecture
-        // TODO: Implement server recovery test with MockServerManager that can simulate failures
-    }
-    
-    // ========== Integration Test 5: Editor Registration Integration ==========
-    
-    @Test
-    @Disabled("Requires refactoring - direct server state manipulation no longer available")
-    fun `test editor registration integration - register unregister with server lifecycle`() = runTest {
+    fun `test editor registration integration - register unregister with server lifecycle`() = runBlocking {
         // This test verifies that editor registration/unregistration works correctly
         // and interacts properly with server lifecycle management
         
@@ -338,7 +329,7 @@ class OpenCodeServiceIntegrationTest {
         // Server should be available through the MockServerManager
         
         // Verify server is accessible
-        mockServer.enqueueSessionList(emptyList())
+        mockServer.setupSmartDispatcher(sessions = emptyList())
         val sessions = service.listSessions(forceRefresh = true)
         assertNotNull(sessions)
         
@@ -348,8 +339,10 @@ class OpenCodeServiceIntegrationTest {
         
         // Create a session while editor is active
         val createResponse = TestDataFactory.createSessionResponse(id = "editor-session")
-        mockServer.enqueueSessionCreate(createResponse)
-        mockServer.enqueueSessionList(emptyList())
+        mockServer.setupSmartDispatcher(
+            sessions = emptyList(),
+            createResponse = createResponse
+        )
         
         val sessionId = service.createSession("Editor Session")
         assertEquals("editor-session", sessionId)
@@ -375,20 +368,10 @@ class OpenCodeServiceIntegrationTest {
         assertFalse(service.hasActiveEditor())
     }
     
-    // ========== Additional Integration Test: Cache Behavior Across Operations ==========
-    
-    @Test
-    @Disabled("Requires refactoring - direct server state manipulation no longer available")
-    fun `test cache consistency across multiple operations`() = runTest {
-        // This test needs refactoring to work with the new ServerManager architecture
-        // TODO: Implement cache consistency test without direct server state manipulation
-    }
-    
     // ========== Additional Integration Test: Error Recovery ==========
     
     @Test
-    @Disabled("Test causes LOG.error which triggers TestLoggerAssertionError - error handling works correctly")
-    fun `test error recovery across multiple operations`() = runTest {
+    fun `test error recovery across multiple operations`() = runBlocking {
         // This test verifies that the service recovers gracefully from errors
         
         // Step 1: Successful operation

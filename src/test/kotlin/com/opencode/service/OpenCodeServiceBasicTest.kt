@@ -2,7 +2,7 @@ package com.opencode.service
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
@@ -184,7 +184,7 @@ class OpenCodeServiceBasicTest {
     // ========== Server Running Tests ==========
     
     @Test
-    fun `test isServerRunning returns true when HTTP call succeeds`() = runTest {
+    fun `test isServerRunning returns true when HTTP call succeeds`() = runBlocking {
         // Start the mock web server
         mockWebServer.start()
         val port = mockWebServer.port
@@ -210,7 +210,7 @@ class OpenCodeServiceBasicTest {
     }
     
     @Test
-    fun `test isServerRunning returns false when HTTP fails`() = runTest {
+    fun `test isServerRunning returns false when HTTP fails`() = runBlocking {
         // Start the mock web server
         mockWebServer.start()
         val port = mockWebServer.port
@@ -230,7 +230,7 @@ class OpenCodeServiceBasicTest {
     }
     
     @Test
-    fun `test isServerRunning returns false when server not reachable`() = runTest {
+    fun `test isServerRunning returns false when server not reachable`() = runBlocking {
         // Use a port that's definitely not in use (high random port)
         val unreachablePort = 65432
         
@@ -242,7 +242,7 @@ class OpenCodeServiceBasicTest {
     }
     
     @Test
-    fun `test isServerRunning handles timeout gracefully`() = runTest {
+    fun `test isServerRunning handles timeout gracefully`() = runBlocking {
         // Start the mock web server
         mockWebServer.start()
         val port = mockWebServer.port

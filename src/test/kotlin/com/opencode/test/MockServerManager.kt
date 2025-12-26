@@ -23,6 +23,7 @@ class MockServerManager(
     override suspend fun getOrStartServer(): Int? {
         return if (shouldSucceed) {
             started = true
+            stopped = false
             mockPort
         } else {
             null

@@ -4,7 +4,7 @@ import com.google.gson.Gson
 import com.intellij.openapi.project.Project
 import com.opencode.test.MockServerManager
 import com.opencode.test.TestDataFactory
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
@@ -38,7 +38,7 @@ class OpenCodeServiceNetworkTest {
     // ========== HTTP Error Codes ==========
     
     @Test
-    fun `listSessions handles 500 Internal Server Error`() = runTest {
+    fun `listSessions handles 500 Internal Server Error`() = runBlocking {
         // Arrange - Create server that returns 500 error
         val errorServer = MockWebServer()
         errorServer.dispatcher = object : Dispatcher() {
@@ -64,7 +64,7 @@ class OpenCodeServiceNetworkTest {
     }
     
     @Test
-    fun `getSession handles 404 Not Found gracefully`() = runTest {
+    fun `getSession handles 404 Not Found gracefully`() = runBlocking {
         // Arrange - Server returns 404
         val notFoundServer = MockWebServer()
         notFoundServer.dispatcher = object : Dispatcher() {
@@ -90,7 +90,7 @@ class OpenCodeServiceNetworkTest {
     }
     
     @Test
-    fun `deleteSession handles 500 error gracefully`() = runTest {
+    fun `deleteSession handles 500 error gracefully`() = runBlocking {
         // Arrange - Server returns 500 error
         val errorServer = MockWebServer()
         errorServer.dispatcher = object : Dispatcher() {
@@ -115,7 +115,7 @@ class OpenCodeServiceNetworkTest {
     }
     
     @Test
-    fun `shareSession handles error and returns null`() = runTest {
+    fun `shareSession handles error and returns null`() = runBlocking {
         // Arrange - Server returns error
         val errorServer = MockWebServer()
         errorServer.dispatcher = object : Dispatcher() {
@@ -140,7 +140,7 @@ class OpenCodeServiceNetworkTest {
     }
     
     @Test
-    fun `unshareSession handles error gracefully`() = runTest {
+    fun `unshareSession handles error gracefully`() = runBlocking {
         // Arrange - Server returns error
         val errorServer = MockWebServer()
         errorServer.dispatcher = object : Dispatcher() {
@@ -167,7 +167,7 @@ class OpenCodeServiceNetworkTest {
     // ========== Connection Failures ==========
     
     @Test
-    fun `listSessions handles server unavailable gracefully`() = runTest {
+    fun `listSessions handles server unavailable gracefully`() = runBlocking {
         // Arrange - Create service with failing server manager
         val failingServerManager = MockServerManager(shouldSucceed = false)
         val service = OpenCodeService(mockProject, failingServerManager)
@@ -180,7 +180,7 @@ class OpenCodeServiceNetworkTest {
     }
     
     @Test
-    fun `deleteSession handles connection refused gracefully`() = runTest {
+    fun `deleteSession handles connection refused gracefully`() = runBlocking {
         // Arrange - Create service with failing server manager
         val failingServerManager = MockServerManager(shouldSucceed = false)
         val service = OpenCodeService(mockProject, failingServerManager)
@@ -193,7 +193,7 @@ class OpenCodeServiceNetworkTest {
     }
     
     @Test
-    fun `getSession returns null when server unavailable`() = runTest {
+    fun `getSession returns null when server unavailable`() = runBlocking {
         // Arrange - Create service with failing server manager
         val failingServerManager = MockServerManager(shouldSucceed = false)
         val service = OpenCodeService(mockProject, failingServerManager)
@@ -208,7 +208,7 @@ class OpenCodeServiceNetworkTest {
     // ========== Malformed Response Handling ==========
     
     @Test
-    fun `listSessions handles malformed JSON response with exception`() = runTest {
+    fun `listSessions handles malformed JSON response gracefully`() = runBlocking {
         // Arrange - Server returns invalid JSON
         val malformedServer = MockWebServer()
         malformedServer.dispatcher = object : Dispatcher() {
@@ -224,20 +224,17 @@ class OpenCodeServiceNetworkTest {
         val serverManager = MockServerManager(mockPort = malformedServer.port, shouldSucceed = true)
         val service = OpenCodeService(mockProject, serverManager)
         
-        // Act & Assert - Service will throw JsonSyntaxException  
-        try {
-            service.listSessions()
-            fail("Expected exception for malformed JSON")
-        } catch (e: Exception) {
-            // Success - exception is thrown for malformed JSON
-            assertTrue(e is com.google.gson.JsonSyntaxException || e.cause is com.google.gson.JsonSyntaxException)
-        }
+        // Act
+        val result = service.listSessions()
+        
+        // Assert - Should return empty list for malformed JSON
+        assertTrue(result.isEmpty())
         
         malformedServer.shutdown()
     }
     
     @Test
-    fun `getSession handles malformed JSON response gracefully`() = runTest {
+    fun `getSession handles malformed JSON response gracefully`() = runBlocking {
         // Arrange - Server returns invalid JSON
         val malformedServer = MockWebServer()
         malformedServer.dispatcher = object : Dispatcher() {
@@ -263,7 +260,7 @@ class OpenCodeServiceNetworkTest {
     }
     
     @Test
-    fun `createSession handles incomplete JSON response`() = runTest {
+    fun `createSession handles incomplete JSON response`() = runBlocking {
         // Arrange - Response missing required fields
         val incompleteServer = MockWebServer()
         incompleteServer.dispatcher = object : Dispatcher() {
@@ -299,7 +296,7 @@ class OpenCodeServiceNetworkTest {
     // ========== Network Interruption During Operation ==========
     
     @Test
-    fun `listSessions handles connection drop during response with exception`() = runTest {
+    fun `listSessions handles connection drop during response gracefully`() = runBlocking {
         // Arrange - Server disconnects mid-response
         val disconnectServer = MockWebServer()
         disconnectServer.dispatcher = object : Dispatcher() {
@@ -314,20 +311,17 @@ class OpenCodeServiceNetworkTest {
         val serverManager = MockServerManager(mockPort = disconnectServer.port, shouldSucceed = true)
         val service = OpenCodeService(mockProject, serverManager)
         
-        // Act & Assert - Connection drop causes exception
-        try {
-            service.listSessions()
-            fail("Expected exception for connection drop")
-        } catch (e: Exception) {
-            // Success - exception thrown for connection drop
-            assertTrue(e is java.io.IOException || e is NullPointerException)
-        }
+        // Act
+        val result = service.listSessions()
+        
+        // Assert - Should return empty list for connection drop
+        assertTrue(result.isEmpty())
         
         disconnectServer.shutdown()
     }
     
     @Test
-    fun `createSession handles abrupt connection close`() = runTest {
+    fun `createSession handles abrupt connection close`() = runBlocking {
         // Arrange - Server closes connection immediately
         val closeServer = MockWebServer()
         closeServer.dispatcher = object : Dispatcher() {
@@ -362,7 +356,7 @@ class OpenCodeServiceNetworkTest {
     
     @org.junit.jupiter.api.Disabled("Real network timeout tests cause UncompletedCoroutinesError - MockWebServer delays run on background threads outside test dispatcher control")
     @Test
-    fun `listSessions handles slow response timeout with exception`() = runTest {
+    fun `listSessions handles slow response timeout with exception`() = runBlocking {
         // Arrange - Server delays response beyond timeout (5 seconds)
         val slowServer = MockWebServer()
         slowServer.dispatcher = object : Dispatcher() {
@@ -393,7 +387,7 @@ class OpenCodeServiceNetworkTest {
     
     @org.junit.jupiter.api.Disabled("Real network timeout tests cause UncompletedCoroutinesError - MockWebServer delays run on background threads outside test dispatcher control")
     @Test
-    fun `getSession handles timeout and returns null`() = runTest {
+    fun `getSession handles timeout and returns null`() = runBlocking {
         // Arrange - Server delays response beyond timeout
         val timeoutServer = MockWebServer()
         timeoutServer.dispatcher = object : Dispatcher() {
@@ -421,7 +415,7 @@ class OpenCodeServiceNetworkTest {
     // ========== Edge Case: Empty Response Body ==========
     
     @Test
-    fun `listSessions handles empty response body with exception`() = runTest {
+    fun `listSessions handles empty response body gracefully`() = runBlocking {
         // Arrange - Server returns empty body
         val emptyServer = MockWebServer()
         emptyServer.dispatcher = object : Dispatcher() {
@@ -437,20 +431,17 @@ class OpenCodeServiceNetworkTest {
         val serverManager = MockServerManager(mockPort = emptyServer.port, shouldSucceed = true)
         val service = OpenCodeService(mockProject, serverManager)
         
-        // Act & Assert - Empty body causes exception during parsing
-        try {
-            service.listSessions()
-            fail("Expected exception for empty body")
-        } catch (e: Exception) {
-            // Success - exception thrown for empty body
-            assertTrue(e is com.google.gson.JsonSyntaxException || e is NullPointerException)
-        }
+        // Act
+        val result = service.listSessions()
+        
+        // Assert - Should return empty list for empty body
+        assertTrue(result.isEmpty())
         
         emptyServer.shutdown()
     }
     
     @Test
-    fun `getSession handles missing Content-Type header`() = runTest {
+    fun `getSession handles missing Content-Type header`() = runBlocking {
         // Arrange - Server returns response without Content-Type header
         val noHeaderServer = MockWebServer()
         noHeaderServer.dispatcher = object : Dispatcher() {

@@ -667,6 +667,142 @@ class SessionListDialogPlatformTest : OpenCodePlatformTestBase() {
         }
     }
     
+
+    fun `test delete button prompts for confirmation`() {
+        // Arrange
+        val session = TestDataFactory.createSessionInfo(id = "delete-me", title = "To Delete")
+        runBlocking {
+            whenever(mockService.listSessions(any())).thenReturn(listOf(session))
+            whenever(mockService.deleteSession(any())).thenReturn(true)
+        }
+        
+        // Configure dialog provider to say YES
+        testDialogProvider.yesNoDialogResult = true
+        
+        ApplicationManager.getApplication().invokeAndWait {
+            // Act
+            val dialog = SessionListDialog(project, mockService, testDialogProvider)
+            (dialog as SessionListViewModel.ViewCallback).onSessionsLoaded(listOf(session))
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            
+            // Select session
+            val list = findSessionList(dialog)!!
+            list.selectedIndex = 0
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            
+            // Click Delete
+            val deleteButton = findButtonByText(dialog, "Delete")
+            assertNotNull("Delete button should exist", deleteButton)
+            deleteButton!!.doClick()
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            
+            dialog.close(DialogWrapper.CANCEL_EXIT_CODE)
+        }
+        
+        // Assert
+        runBlocking {
+            verify(mockService).deleteSession("delete-me")
+        }
+    }
+    
+    fun `test delete button cancellation aborts deletion`() {
+        // Arrange
+        val session = TestDataFactory.createSessionInfo(id = "keep-me", title = "To Keep")
+        runBlocking {
+            whenever(mockService.listSessions(any())).thenReturn(listOf(session))
+        }
+        
+        // Configure dialog provider to say NO
+        testDialogProvider.yesNoDialogResult = false
+        
+        ApplicationManager.getApplication().invokeAndWait {
+            // Act
+            val dialog = SessionListDialog(project, mockService, testDialogProvider)
+            (dialog as SessionListViewModel.ViewCallback).onSessionsLoaded(listOf(session))
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            
+            // Select session
+            val list = findSessionList(dialog)!!
+            list.selectedIndex = 0
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            
+            // Click Delete
+            val deleteButton = findButtonByText(dialog, "Delete")
+            deleteButton!!.doClick()
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            
+            dialog.close(DialogWrapper.CANCEL_EXIT_CODE)
+        }
+        
+        // Assert
+        runBlocking {
+            verify(mockService, never()).deleteSession(any())
+        }
+    }
+    
+    fun `test share button shares unshared session`() {
+        // Arrange
+        val session = TestDataFactory.createSessionInfo(id = "share-me")
+        runBlocking {
+            whenever(mockService.listSessions(any())).thenReturn(listOf(session))
+            whenever(mockService.shareSession(any())).thenReturn("https://url")
+        }
+        
+        ApplicationManager.getApplication().invokeAndWait {
+            // Act
+            val dialog = SessionListDialog(project, mockService, testDialogProvider)
+            (dialog as SessionListViewModel.ViewCallback).onSessionsLoaded(listOf(session))
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            
+            // Select session
+            findSessionList(dialog)!!.selectedIndex = 0
+            
+            // Click Share
+            findButtonByText(dialog, "Share")!!.doClick()
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            
+            dialog.close(DialogWrapper.CANCEL_EXIT_CODE)
+        }
+        
+        // Assert
+        runBlocking {
+            verify(mockService).shareSession("share-me")
+        }
+    }
+    
+    fun `test share button shows options for shared session`() {
+        // Arrange
+        val session = TestDataFactory.createSharedSession(id = "already-shared")
+        runBlocking {
+            whenever(mockService.listSessions(any())).thenReturn(listOf(session))
+            whenever(mockService.unshareSession(any())).thenReturn(true)
+        }
+        
+        // Configure dialog provider to select "Unshare" (index 1)
+        testDialogProvider.optionDialogResult = 1
+        
+        ApplicationManager.getApplication().invokeAndWait {
+            // Act
+            val dialog = SessionListDialog(project, mockService, testDialogProvider)
+            (dialog as SessionListViewModel.ViewCallback).onSessionsLoaded(listOf(session))
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            
+            // Select session
+            findSessionList(dialog)!!.selectedIndex = 0
+            
+            // Click Share
+            findButtonByText(dialog, "Share")!!.doClick()
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            
+            dialog.close(DialogWrapper.CANCEL_EXIT_CODE)
+        }
+        
+        // Assert
+        runBlocking {
+            verify(mockService).unshareSession("already-shared")
+        }
+    }
+
     // ========== Helper Methods ==========
     
     private fun findCenterPanel(dialog: SessionListDialog): JComponent? {

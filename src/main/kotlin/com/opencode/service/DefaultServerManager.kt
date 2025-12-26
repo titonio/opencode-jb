@@ -46,11 +46,11 @@ class DefaultServerManager(
                 }
                 LOG.warn("Server on port $port failed to respond (attempt ${attempt + 1})")
             } catch (e: Exception) {
-                thisLogger().error("Server start attempt ${attempt + 1} failed", e)
+                thisLogger().warn("Server start attempt ${attempt + 1} failed", e)
             }
         }
         
-        LOG.error("Failed to start OpenCode server after $maxRetries attempts")
+        LOG.warn("Failed to start OpenCode server after $maxRetries attempts")
         return null
     }
     

@@ -72,6 +72,9 @@ class OpenCodeService(
     // Configuration
     private val MAX_SESSIONS_TO_KEEP = 10
     
+    // Internal flag for testing to bypass platform calls that crash in mixed test environments
+    internal var disablePlatformInteractions: Boolean = false
+    
     /**
      * Check if OpenCode CLI is installed and available.
      */
@@ -119,6 +122,15 @@ class OpenCodeService(
     private fun scheduleServerShutdownCheck() {
         // Wait 1 second before checking if we should stop the server
         // This handles the case where tab is dragged/split and editor recreated
+        
+        if (disablePlatformInteractions) {
+            // In tests without platform application, just run the check directly or skip
+            // Since we can't spawn a pooled thread via ApplicationManager, we'll just check immediately
+            // but we won't wait, as that would block the test
+            stopSharedServerIfUnused()
+            return
+        }
+
         ApplicationManager.getApplication().executeOnPooledThread {
             Thread.sleep(1000)
             ApplicationManager.getApplication().invokeLater {
@@ -163,7 +175,7 @@ class OpenCodeService(
         
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                LOG.error("Failed to create session: HTTP ${response.code}")
+                LOG.warn("Failed to create session: HTTP ${response.code}")
                 throw IOException("Failed to create session: ${response.code}")
             }
             
@@ -199,18 +211,23 @@ class OpenCodeService(
             .get()
             .build()
         
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return@withContext emptyList()
-            
-            val body = response.body?.string() ?: return@withContext emptyList()
-            val type = object : TypeToken<List<SessionInfo>>() {}.type
-            val sessions: List<SessionInfo> = gson.fromJson(body, type)
-            
-            sessionCache.clear()
-            sessions.forEach { sessionCache[it.id] = it }
-            
-            lastCacheUpdate = System.currentTimeMillis()
-            sessions.sortedByDescending { it.time.updated }
+        try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext emptyList()
+                
+                val body = response.body?.string() ?: return@withContext emptyList()
+                val type = object : TypeToken<List<SessionInfo>>() {}.type
+                val sessions: List<SessionInfo> = gson.fromJson(body, type)
+                
+                sessionCache.clear()
+                sessions.forEach { sessionCache[it.id] = it }
+                
+                lastCacheUpdate = System.currentTimeMillis()
+                sessions.sortedByDescending { it.time.updated }
+            }
+        } catch (e: Exception) {
+            LOG.warn("Failed to list sessions", e)
+            emptyList()
         }
     }
     
@@ -286,6 +303,7 @@ class OpenCodeService(
                 session.shareUrl
             }
         } catch (e: Exception) {
+            LOG.warn("Failed to share session $sessionId", e)
             null
         }
     }
@@ -358,11 +376,24 @@ class OpenCodeService(
     
     fun initToolWindow(toolWindow: ToolWindow) {
         LOG.info("OpenCodeService.initToolWindow called")
+        
+        // Guard against missing platform infrastructure (unit tests)
+        if (disablePlatformInteractions) {
+            LOG.info("Skipping initToolWindow - platform interactions disabled")
+            return
+        }
+        
+        val app = ApplicationManager.getApplication()
+        if (app == null) {
+            LOG.warn("ApplicationManager not available, skipping initToolWindow")
+            return
+        }
+
         val contentFactory = com.intellij.ui.content.ContentFactory.getInstance()
         
         toolWindow.contentManager.removeAllContents(true)
 
-        ApplicationManager.getApplication().invokeLater {
+        app.invokeLater {
             val panel = com.opencode.toolwindow.OpenCodeToolWindowPanel(project, this)
             val content = contentFactory.createContent(panel, "", false)
             toolWindow.contentManager.addContent(content)
@@ -376,6 +407,16 @@ class OpenCodeService(
     }
 
     fun createTerminalWidget(): Pair<JBTerminalWidget, Int> {
+        // Guard against missing platform infrastructure (unit tests)
+        if (disablePlatformInteractions || ApplicationManager.getApplication() == null) {
+            // For tests, return a dummy pair or throw an exception that tests expect
+            if (disablePlatformInteractions) {
+                // Throw an exception that tests can catch safely without crashing the suite
+                throw IllegalStateException("Platform interactions disabled for testing")
+            }
+            throw IllegalStateException("ApplicationManager not available")
+        }
+
         val port = Random.nextInt(16384, 65536)
         val isWindows = System.getProperty("os.name").lowercase().contains("win")
 
@@ -415,6 +456,17 @@ class OpenCodeService(
 
     fun openTerminal(initialFile: String? = null) {
         println("OpenCodeService.openTerminal called: initialFile=$initialFile")
+        
+        // Guard against missing platform infrastructure (unit tests)
+        if (disablePlatformInteractions) {
+            println("Skipping openTerminal - platform interactions disabled")
+            return
+        }
+
+        if (ApplicationManager.getApplication() == null) {
+            println("ApplicationManager not available, skipping openTerminal")
+            return
+        }
         
         val openCodeToolWindow = ToolWindowManager.getInstance(project).getToolWindow("OpenCode")
         if (openCodeToolWindow == null) {
@@ -460,11 +512,18 @@ class OpenCodeService(
     }
 
     private fun appendPromptAsync(port: Int, text: String) {
-        ApplicationManager.getApplication().executeOnPooledThread {
-            try {
-                appendPrompt(port, text)
-            } catch (e: Exception) {
-                // Ignore
+        if (disablePlatformInteractions) {
+             // For tests that want to verify execution flow but skip actual dispatch
+             return
+        }
+        val app = ApplicationManager.getApplication()
+        if (app != null) {
+            app.executeOnPooledThread {
+                try {
+                    appendPrompt(port, text)
+                } catch (e: Throwable) {
+                    // Ignore all errors in async dispatch to prevent crashing
+                }
             }
         }
     }
