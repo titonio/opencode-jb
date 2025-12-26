@@ -63,11 +63,24 @@ class OpenCodeEditorPanel(
     
     override fun onSessionAndPortReady(sessionId: String, port: Int) {
         LOG.info("Session and port ready: session=$sessionId, port=$port")
-        
-        ApplicationManager.getApplication().invokeLater {
+
+        val application = ApplicationManager.getApplication()
+        if (application == null) {
+            LOG.warn("No application instance (likely test); skipping terminal widget creation")
+            onSessionChanged(sessionId, port)
+            return
+        }
+
+        application.invokeLater {
             try {
                 // Notify parent of session/port changes
                 onSessionChanged(sessionId, port)
+
+                // In headless environments (e.g., tests), skip terminal creation
+                if (application.isHeadlessEnvironment) {
+                    LOG.warn("Headless environment detected; skipping terminal widget creation")
+                    return@invokeLater
+                }
                 
                 // Create terminal widget
                 val newWidget = createTerminalForSession(port, sessionId)

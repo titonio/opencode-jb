@@ -601,10 +601,21 @@ class DefaultServerManagerTest {
     }
     
     @Test
-    @Disabled("Test starts real server process which causes UncompletedCoroutinesError in test environment")
     fun `waitForConnection returns false on timeout`() = runBlocking {
-        // This test is disabled because it actually tries to execute 'opencode serve' 
-        // which might not be installed in the CI environment or could leave zombie processes.
-        // It's safer to rely on integration tests for this behavior.
+        // Arrange: use manager with very short timeout to avoid real process start
+        val shortTimeoutClient = OkHttpClient.Builder()
+            .readTimeout(200, TimeUnit.MILLISECONDS)
+            .connectTimeout(200, TimeUnit.MILLISECONDS)
+            .build()
+        val shortManager = DefaultServerManager(workingDirectory, shortTimeoutClient)
+
+        // Act: call waitForConnection on an unused port with tiny timeout
+        val startTime = System.currentTimeMillis()
+        val result = shortManager.waitForConnection(port = 65010, timeout = 300)
+        val duration = System.currentTimeMillis() - startTime
+
+        // Assert: should time out quickly and return false
+        assertFalse(result)
+        assertTrue(duration < 2000, "Should respect short timeout, took ${duration}ms")
     }
 }

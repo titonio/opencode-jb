@@ -386,7 +386,6 @@ class OpenCodeServiceConcurrentTest {
     // ========== Cache Consistency Tests ==========
     
     @Test
-    @org.junit.jupiter.api.Disabled("Flaky concurrent test - cache consistency check fails intermittently due to timing issues")
     fun `concurrent cache updates maintain consistency`() = runBlocking {
         // Arrange
         val sessions = TestDataFactory.createSessionList(5)

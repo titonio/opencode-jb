@@ -201,185 +201,29 @@ class ListSessionsActionDialogTest {
     
     // ========== Session Selection and File Opening Tests ==========
     
-    @org.junit.jupiter.api.Disabled("Static mocking requires IntelliJ platform runtime")
     @Test
     fun `test actionPerformed with selected session attempts to open file`() {
         val testSession = TestDataFactory.createSessionInfo(
             id = "test-session-123",
             title = "Test Session"
         )
-        
-        val mockVirtualFile = mock<OpenCodeVirtualFile>()
-        val mockFileSystem = mock<OpenCodeFileSystem>()
-        val mockEditorManager = mock<FileEditorManager>()
-        
-        val fileSystemMock = Mockito.mockStatic(OpenCodeFileSystem::class.java)
-        val editorManagerMock = Mockito.mockStatic(FileEditorManager::class.java)
-        
-        try {
-            // Setup static method mocking
-            fileSystemMock.`when`<Any> { OpenCodeFileSystem.getInstance() }.thenReturn(mockFileSystem)
-            editorManagerMock.`when`<Any> { FileEditorManager.getInstance(mockProject) }.thenReturn(mockEditorManager)
-            
-            // Setup instance method mocking
-            whenever(mockFileSystem.findFileByPath(any())).thenReturn(mockVirtualFile)
-            whenever(mockEditorManager.openFile(any(), any())).thenReturn(arrayOf())
-            
-            Mockito.mockConstruction(SessionListDialog::class.java) { mock, _ ->
-                whenever(mock.showAndGet()).thenReturn(true)
-                whenever(mock.getSelectedSession()).thenReturn(testSession)
-            }.use {
-                whenever(mockEvent.project).thenReturn(mockProject)
-                
-                action.actionPerformed(mockEvent)
-                
-                // Verify file system and editor interactions occurred
-                verify(mockFileSystem).findFileByPath(any())
-                verify(mockEditorManager).openFile(eq(mockVirtualFile), eq(true))
-            }
-        } finally {
-            fileSystemMock.close()
-            editorManagerMock.close()
+
+        // Spy on action to intercept helper
+        val spyAction = Mockito.spy(action)
+        doNothing().`when`(spyAction).openSessionFile(any(), any())
+
+        Mockito.mockConstruction(SessionListDialog::class.java) { mock, _ ->
+            whenever(mock.showAndGet()).thenReturn(true)
+            whenever(mock.getSelectedSession()).thenReturn(testSession)
+        }.use {
+            whenever(mockEvent.project).thenReturn(mockProject)
+
+            spyAction.actionPerformed(mockEvent)
+
+            verify(spyAction).openSessionFile(eq(mockProject), eq(testSession.id))
         }
     }
-    
-    @org.junit.jupiter.api.Disabled("Static mocking requires IntelliJ platform runtime")
-    @Test
-    fun `test actionPerformed uses session ID to build correct file path`() {
-        val sessionId = "unique-session-456"
-        val testSession = TestDataFactory.createSessionInfo(id = sessionId)
-        
-        val mockVirtualFile = mock<OpenCodeVirtualFile>()
-        val mockFileSystem = mock<OpenCodeFileSystem>()
-        val mockEditorManager = mock<FileEditorManager>()
-        
-        val fileSystemMock = Mockito.mockStatic(OpenCodeFileSystem::class.java)
-        val editorManagerMock = Mockito.mockStatic(FileEditorManager::class.java)
-        
-        try {
-            fileSystemMock.`when`<Any> { OpenCodeFileSystem.getInstance() }.thenReturn(mockFileSystem)
-            editorManagerMock.`when`<Any> { FileEditorManager.getInstance(mockProject) }.thenReturn(mockEditorManager)
-            
-            // Use argument captor to verify the exact path
-            whenever(mockFileSystem.findFileByPath(any())).thenReturn(mockVirtualFile)
-            whenever(mockEditorManager.openFile(any(), any())).thenReturn(arrayOf())
-            
-            Mockito.mockConstruction(SessionListDialog::class.java) { mock, _ ->
-                whenever(mock.showAndGet()).thenReturn(true)
-                whenever(mock.getSelectedSession()).thenReturn(testSession)
-            }.use {
-                whenever(mockEvent.project).thenReturn(mockProject)
-                
-                action.actionPerformed(mockEvent)
-                
-                // Verify the path contains the session ID
-                // The actual format is opencode://session/session-id based on buildUrl implementation
-                argumentCaptor<String>().apply {
-                    verify(mockFileSystem).findFileByPath(capture())
-                    assertTrue(firstValue.contains(sessionId), 
-                        "File path should contain session ID: $sessionId, got: $firstValue")
-                }
-            }
-        } finally {
-            fileSystemMock.close()
-            editorManagerMock.close()
-        }
-    }
-    
-    @org.junit.jupiter.api.Disabled("Static mocking requires IntelliJ platform runtime")
-    @Test
-    fun `test actionPerformed opens file with focus enabled`() {
-        val testSession = TestDataFactory.createSessionInfo()
-        
-        val mockVirtualFile = mock<OpenCodeVirtualFile>()
-        val mockFileSystem = mock<OpenCodeFileSystem>()
-        val mockEditorManager = mock<FileEditorManager>()
-        
-        val fileSystemMock = Mockito.mockStatic(OpenCodeFileSystem::class.java)
-        val editorManagerMock = Mockito.mockStatic(FileEditorManager::class.java)
-        
-        try {
-            fileSystemMock.`when`<Any> { OpenCodeFileSystem.getInstance() }.thenReturn(mockFileSystem)
-            editorManagerMock.`when`<Any> { FileEditorManager.getInstance(mockProject) }.thenReturn(mockEditorManager)
-            
-            whenever(mockFileSystem.findFileByPath(any())).thenReturn(mockVirtualFile)
-            whenever(mockEditorManager.openFile(any(), any())).thenReturn(arrayOf())
-            
-            Mockito.mockConstruction(SessionListDialog::class.java) { mock, _ ->
-                whenever(mock.showAndGet()).thenReturn(true)
-                whenever(mock.getSelectedSession()).thenReturn(testSession)
-            }.use {
-                whenever(mockEvent.project).thenReturn(mockProject)
-                
-                action.actionPerformed(mockEvent)
-                
-                // Verify file was opened with focus=true (second parameter)
-                verify(mockEditorManager).openFile(any(), eq(true))
-            }
-        } finally {
-            fileSystemMock.close()
-            editorManagerMock.close()
-        }
-    }
-    
-    // ========== End-to-End Flow Tests ==========
-    
-    @org.junit.jupiter.api.Disabled("Static mocking requires IntelliJ platform runtime")
-    @Test
-    fun `test complete flow from dialog showing to file opening`() {
-        val testSession = TestDataFactory.createSessionInfo(
-            id = "end-to-end-session",
-            title = "End to End Test"
-        )
-        
-        val mockVirtualFile = mock<OpenCodeVirtualFile>()
-        val mockFileSystem = mock<OpenCodeFileSystem>()
-        val mockEditorManager = mock<FileEditorManager>()
-        
-        val fileSystemMock = Mockito.mockStatic(OpenCodeFileSystem::class.java)
-        val editorManagerMock = Mockito.mockStatic(FileEditorManager::class.java)
-        
-        try {
-            fileSystemMock.`when`<Any> { OpenCodeFileSystem.getInstance() }.thenReturn(mockFileSystem)
-            editorManagerMock.`when`<Any> { FileEditorManager.getInstance(mockProject) }.thenReturn(mockEditorManager)
-            
-            whenever(mockFileSystem.findFileByPath(any())).thenReturn(mockVirtualFile)
-            whenever(mockEditorManager.openFile(any(), any())).thenReturn(arrayOf())
-            
-            var dialogCreated = false
-            var dialogShown = false
-            var sessionRetrieved = false
-            
-            Mockito.mockConstruction(SessionListDialog::class.java) { mock, _ ->
-                dialogCreated = true
-                whenever(mock.showAndGet()).thenAnswer {
-                    dialogShown = true
-                    true
-                }
-                whenever(mock.getSelectedSession()).thenAnswer {
-                    sessionRetrieved = true
-                    testSession
-                }
-            }.use {
-                whenever(mockEvent.project).thenReturn(mockProject)
-                
-                action.actionPerformed(mockEvent)
-                
-                // Verify complete flow
-                assertTrue(dialogCreated, "Dialog should be created")
-                assertTrue(dialogShown, "Dialog should be shown")
-                assertTrue(sessionRetrieved, "Session should be retrieved")
-                
-                verify(mockFileSystem).findFileByPath(any())
-                verify(mockEditorManager).openFile(eq(mockVirtualFile), eq(true))
-            }
-        } finally {
-            fileSystemMock.close()
-            editorManagerMock.close()
-        }
-    }
-    
-    @org.junit.jupiter.api.Disabled("Static mocking requires IntelliJ platform runtime")
+
     @Test
     fun `test actionPerformed with different session IDs`() {
         val sessions = listOf(
@@ -387,47 +231,22 @@ class ListSessionsActionDialogTest {
             TestDataFactory.createSessionInfo(id = "session-B"),
             TestDataFactory.createSessionInfo(id = "session-C")
         )
-        
-        val mockFileSystem = mock<OpenCodeFileSystem>()
-        val mockEditorManager = mock<FileEditorManager>()
-        val mockVirtualFile = mock<OpenCodeVirtualFile>()
-        
-        val fileSystemMock = Mockito.mockStatic(OpenCodeFileSystem::class.java)
-        val editorManagerMock = Mockito.mockStatic(FileEditorManager::class.java)
-        
-        try {
-            fileSystemMock.`when`<Any> { OpenCodeFileSystem.getInstance() }.thenReturn(mockFileSystem)
-            editorManagerMock.`when`<Any> { FileEditorManager.getInstance(mockProject) }.thenReturn(mockEditorManager)
-            
-            whenever(mockFileSystem.findFileByPath(any())).thenReturn(mockVirtualFile)
-            whenever(mockEditorManager.openFile(any(), any())).thenReturn(arrayOf())
-            
-            sessions.forEach { session ->
-                Mockito.mockConstruction(SessionListDialog::class.java) { mock, _ ->
-                    whenever(mock.showAndGet()).thenReturn(true)
-                    whenever(mock.getSelectedSession()).thenReturn(session)
-                }.use {
-                    whenever(mockEvent.project).thenReturn(mockProject)
-                    
-                    action.actionPerformed(mockEvent)
-                    
-                    // Verify file path contains session ID
-                    argumentCaptor<String>().apply {
-                        verify(mockFileSystem, atLeastOnce()).findFileByPath(capture())
-                        assertTrue(allValues.any { it.contains(session.id) }, 
-                            "File path should contain session ID: ${session.id}")
-                    }
-                }
-                
-                reset(mockFileSystem, mockEditorManager)
-                
-                // Re-setup mocks for next iteration
-                whenever(mockFileSystem.findFileByPath(any())).thenReturn(mockVirtualFile)
-                whenever(mockEditorManager.openFile(any(), any())).thenReturn(arrayOf())
+
+        val spyAction = Mockito.spy(action)
+
+        whenever(mockEvent.project).thenReturn(mockProject)
+
+        sessions.forEach { session ->
+            Mockito.reset(spyAction)
+            doNothing().`when`(spyAction).openSessionFile(mockProject, session.id)
+
+            Mockito.mockConstruction(SessionListDialog::class.java) { dialogMock, _ ->
+                whenever(dialogMock.showAndGet()).thenReturn(true)
+                whenever(dialogMock.getSelectedSession()).thenReturn(session)
+            }.use {
+                spyAction.actionPerformed(mockEvent)
+                verify(spyAction).openSessionFile(eq(mockProject), eq(session.id))
             }
-        } finally {
-            fileSystemMock.close()
-            editorManagerMock.close()
         }
     }
 }

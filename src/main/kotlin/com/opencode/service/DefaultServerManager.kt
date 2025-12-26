@@ -84,11 +84,12 @@ class DefaultServerManager(
                 .build()
             client.newCall(request).execute().use { it.isSuccessful }
         } catch (e: Exception) {
+            LOG.debug("Health check failed on port $port", e)
             false
         }
     }
     
-    private suspend fun waitForConnection(port: Int, timeout: Long = 10000): Boolean {
+    internal suspend fun waitForConnection(port: Int, timeout: Long = 10000): Boolean {
         val startTime = System.currentTimeMillis()
         while (System.currentTimeMillis() - startTime < timeout) {
             if (isServerRunning(port)) return true

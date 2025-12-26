@@ -4,6 +4,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.project.Project
 import com.opencode.service.OpenCodeService
 import com.opencode.ui.SessionListDialog
 import com.opencode.vfs.OpenCodeFileSystem
@@ -15,29 +16,30 @@ class ListSessionsAction : AnAction("List OpenCode Sessions") {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val service = project.service<OpenCodeService>()
-        
-        // Show session list dialog
+
         val dialog = SessionListDialog(project, service)
-        if (dialog.showAndGet()) {
-            val selectedSession = dialog.getSelectedSession()
-            if (selectedSession != null) {
-                // Open tab with selected session using custom VFS
-                val virtualFile = OpenCodeFileSystem.getInstance()
-                    .findFileByPath(OpenCodeFileSystem.buildUrl(selectedSession.id))!!
-                FileEditorManager.getInstance(project).openFile(virtualFile, true)
-            }
-        }
+        if (!dialog.showAndGet()) return
+
+        val selectedSession = dialog.getSelectedSession() ?: return
+        openSessionFile(project, selectedSession.id)
     }
     
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabledAndVisible = e.project != null
     }
-}
 
+    internal fun openSessionFile(project: Project, sessionId: String) {
+        val virtualFile = OpenCodeFileSystem.getInstance()
+            .findFileByPath(OpenCodeFileSystem.buildUrl(sessionId)) ?: return
+        FileEditorManager.getInstance(project).openFile(virtualFile, true)
+    }
+}
+ 
 /**
  * Action to create a new session directly
  */
 class NewSessionAction : AnAction("New OpenCode Session") {
+
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val service = project.service<OpenCodeService>()

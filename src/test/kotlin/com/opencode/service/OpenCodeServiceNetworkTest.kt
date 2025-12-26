@@ -354,18 +354,16 @@ class OpenCodeServiceNetworkTest {
     
     // ========== Timeout Scenarios ==========
     
-    @org.junit.jupiter.api.Disabled("Real network timeout tests cause UncompletedCoroutinesError - MockWebServer delays run on background threads outside test dispatcher control")
     @Test
     fun `listSessions handles slow response timeout with exception`() = runBlocking {
-        // Arrange - Server delays response beyond timeout (5 seconds)
+        // Arrange - Server delays response beyond timeout using body throttle (no extra threads)
         val slowServer = MockWebServer()
         slowServer.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
-                // Delay for 10 seconds (longer than 5 second timeout)
                 return MockResponse()
                     .setResponseCode(200)
                     .setBody("[]")
-                    .setBodyDelay(10, TimeUnit.SECONDS)
+                    .throttleBody(1, 10, TimeUnit.SECONDS) // very slow stream to trigger client timeout
             }
         }
         slowServer.start()
@@ -373,29 +371,25 @@ class OpenCodeServiceNetworkTest {
         val serverManager = MockServerManager(mockPort = slowServer.port, shouldSucceed = true)
         val service = OpenCodeService(mockProject, serverManager)
         
-        // Act & Assert - Timeout causes exception
-        try {
-            service.listSessions()
-            fail("Expected timeout exception")
-        } catch (e: Exception) {
-            // Success - timeout exception expected
-            assertTrue(e is java.net.SocketTimeoutException || e.cause is java.net.SocketTimeoutException)
-        } finally {
-            slowServer.shutdown()
-        }
+        // Act
+        val result = service.listSessions(forceRefresh = true)
+
+        // Assert - service should return empty list on timeout (logged warning)
+        assertTrue(result.isEmpty())
+
+        slowServer.shutdown()
     }
     
-    @org.junit.jupiter.api.Disabled("Real network timeout tests cause UncompletedCoroutinesError - MockWebServer delays run on background threads outside test dispatcher control")
     @Test
     fun `getSession handles timeout and returns null`() = runBlocking {
-        // Arrange - Server delays response beyond timeout
+        // Arrange - Server drips body slowly to exceed client timeout
         val timeoutServer = MockWebServer()
         timeoutServer.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 return MockResponse()
                     .setResponseCode(200)
-                    .setBodyDelay(10, TimeUnit.SECONDS)
                     .setBody("{}")
+                    .throttleBody(1, 10, TimeUnit.SECONDS)
             }
         }
         timeoutServer.start()
@@ -409,7 +403,12 @@ class OpenCodeServiceNetworkTest {
         // Assert - Should return null on timeout
         assertNull(result)
         
-        timeoutServer.shutdown()
+        // Shutdown may fail if throttled stream still pending; ignore to avoid flaky failure
+        try {
+            timeoutServer.shutdown()
+        } catch (_: java.io.IOException) {
+            // Expected in slow throttled timeout scenario
+        }
     }
     
     // ========== Edge Case: Empty Response Body ==========

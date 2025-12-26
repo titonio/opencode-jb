@@ -74,11 +74,18 @@ class OpenCodeService(
     
     // Internal flag for testing to bypass platform calls that crash in mixed test environments
     internal var disablePlatformInteractions: Boolean = false
+
+    internal fun shouldShowDialogs(): Boolean {
+        return !disablePlatformInteractions && !ApplicationManager.getApplication().isHeadlessEnvironment
+    }
     
     /**
      * Check if OpenCode CLI is installed and available.
      */
     fun isOpencodeInstalled(): Boolean {
+        if (disablePlatformInteractions) {
+            return true
+        }
         return try {
             val process = ProcessBuilder("opencode", "--version")
                 .redirectErrorStream(true)

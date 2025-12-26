@@ -1,5 +1,6 @@
 package com.opencode.editor
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.fileEditor.FileEditor
@@ -12,11 +13,11 @@ import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VirtualFile
 import com.opencode.service.OpenCodeService
 import com.opencode.vfs.OpenCodeVirtualFile
+import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
 import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
-import java.awt.BorderLayout
 
 private val LOG = logger<OpenCodeFileEditor>()
 
@@ -44,19 +45,24 @@ class OpenCodeFileEditor(
         isOpencodeAvailable = service.isOpencodeInstalled()
         if (!isOpencodeAvailable) {
             LOG.warn("OpenCode CLI not installed")
-            showOpencodeNotInstalledDialog()
+            if (service.shouldShowDialogs()) {
+                showOpencodeNotInstalledDialog()
+            }
         } else {
             // If file is OpenCodeVirtualFile and has a sessionId, use it
             if (file is OpenCodeVirtualFile && file.sessionId != null) {
                 currentSessionId = file.sessionId
                 LOG.debug("Session provided via VirtualFile: ${file.sessionId}")
             }
-            
             service.registerActiveEditor(file)
         }
     }
     
     private fun showOpencodeNotInstalledDialog() {
+        if (ApplicationManager.getApplication().isHeadlessEnvironment) {
+            LOG.warn("OpenCode CLI not installed (headless mode, no dialog)")
+            return
+        }
         Messages.showErrorDialog(
             project,
             """
@@ -101,6 +107,8 @@ class OpenCodeFileEditor(
         val panel = JPanel(BorderLayout())
         val message = if (!isOpencodeAvailable) {
             "OpenCode CLI is not installed. Please install from https://opencode.ai/install"
+        } else if (ApplicationManager.getApplication().isHeadlessEnvironment) {
+            "OpenCode terminal is unavailable in headless test environment"
         } else {
             "Loading OpenCode terminal..."
         }

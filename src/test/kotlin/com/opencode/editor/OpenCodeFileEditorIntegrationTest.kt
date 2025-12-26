@@ -106,10 +106,10 @@ class OpenCodeFileEditorIntegrationTest {
         verify(mockService).registerActiveEditor(mockFile)
     }
     
-    @org.junit.jupiter.api.Disabled("Requires platform UI services (Messages.showErrorDialog) - cannot mock static calls")
     @Test
     fun `test editor creation when opencode not installed`() {
         whenever(mockService.isOpencodeInstalled()).thenReturn(false)
+        whenever(mockService.shouldShowDialogs()).thenReturn(false)
         
         val editor = OpenCodeFileEditor(mockProject, mockFile)
         
@@ -128,7 +128,6 @@ class OpenCodeFileEditorIntegrationTest {
     
     // ========== Component Retrieval ==========
     
-    @org.junit.jupiter.api.Disabled("Requires platform UI services - OpenCodeEditorPanel initialization needs terminal infrastructure")
     @Test
     fun `test getComponent returns valid JComponent`() {
         val editor = OpenCodeFileEditor(mockProject, mockFile)
@@ -139,10 +138,10 @@ class OpenCodeFileEditorIntegrationTest {
         assertTrue(component is JComponent)
     }
     
-    @org.junit.jupiter.api.Disabled("Requires platform UI services (Messages.showErrorDialog) - cannot mock static calls")
     @Test
     fun `test getComponent returns placeholder when opencode not installed`() {
         whenever(mockService.isOpencodeInstalled()).thenReturn(false)
+        whenever(mockService.shouldShowDialogs()).thenReturn(false)
         
         val editor = OpenCodeFileEditor(mockProject, mockFile)
         val component = editor.component
@@ -150,7 +149,6 @@ class OpenCodeFileEditorIntegrationTest {
         assertNotNull(component)
     }
     
-    @org.junit.jupiter.api.Disabled("Requires platform UI services - OpenCodeEditorPanel initialization needs terminal infrastructure")
     @Test
     fun `test getPreferredFocusedComponent returns component`() {
         val editor = OpenCodeFileEditor(mockProject, mockFile)
@@ -158,9 +156,6 @@ class OpenCodeFileEditorIntegrationTest {
         // First call getComponent to initialize
         editor.component
         
-        val focusedComponent = editor.preferredFocusedComponent
-        
-        // May be null before panel is fully initialized
         // Just verify it doesn't throw
         assertDoesNotThrow { editor.preferredFocusedComponent }
     }
@@ -187,7 +182,6 @@ class OpenCodeFileEditorIntegrationTest {
         assertNull(state.serverPort)
     }
     
-    @org.junit.jupiter.api.Disabled("Requires platform UI services - OpenCodeEditorPanel initialization needs terminal infrastructure")
     @Test
     fun `test getState preserves session and port`() {
         whenever(mockFile.sessionId).thenReturn("session-abc")
@@ -421,7 +415,6 @@ class OpenCodeFileEditorIntegrationTest {
         assertEquals("state-session", editor.getCurrentSessionId())
     }
     
-    @org.junit.jupiter.api.Disabled("Requires platform UI services - OpenCodeEditorPanel initialization needs terminal infrastructure")
     @Test
     fun `test multiple getComponent calls return same component`() {
         val editor = OpenCodeFileEditor(mockProject, mockFile)
@@ -464,10 +457,10 @@ class OpenCodeFileEditorIntegrationTest {
     
     // ========== Additional Coverage Tests ==========
     
-    @org.junit.jupiter.api.Disabled("Requires platform UI services (Messages.showErrorDialog) - cannot test when OpenCode not installed")
     @Test
     fun `test getComponent when opencode not available shows placeholder`() {
         whenever(mockService.isOpencodeInstalled()).thenReturn(false)
+        whenever(mockService.shouldShowDialogs()).thenReturn(false)
         
         val editor = OpenCodeFileEditor(mockProject, mockFile)
         val component = editor.component
@@ -477,10 +470,10 @@ class OpenCodeFileEditorIntegrationTest {
         assertTrue(component is JComponent)
     }
     
-    @org.junit.jupiter.api.Disabled("Requires platform UI services (Messages.showErrorDialog) - cannot test when OpenCode not installed")
     @Test
     fun `test getComponent multiple calls with opencode not available`() {
         whenever(mockService.isOpencodeInstalled()).thenReturn(false)
+        whenever(mockService.shouldShowDialogs()).thenReturn(false)
         
         val editor = OpenCodeFileEditor(mockProject, mockFile)
         
@@ -606,10 +599,10 @@ class OpenCodeFileEditorIntegrationTest {
         verify(mockService).registerActiveEditor(mockFile)
     }
     
-    @org.junit.jupiter.api.Disabled("Requires platform UI services (Messages.showErrorDialog) - cannot test when OpenCode not installed")
     @Test
     fun `test editor does not register when opencode not installed`() {
         whenever(mockService.isOpencodeInstalled()).thenReturn(false)
+        whenever(mockService.shouldShowDialogs()).thenReturn(false)
         
         val editor = OpenCodeFileEditor(mockProject, mockFile)
         
