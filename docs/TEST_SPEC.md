@@ -1,9 +1,9 @@
 # OpenCode IntelliJ Plugin - Test Specification
 
-**Status**: Production  
-**Last Updated**: 2025-12-25  
-**Coverage**: 72.12% (architectural ceiling for unit tests)  
-**Test Count**: 1,023 tests (100% pass rate)
+**Status**: Starter/Driver transition in progress (platform suites re-enabled via integrationTest)
+**Last Updated**: 2025-12-26  
+**Coverage**: ~72% (unit tests ceiling; platform coverage pending)
+**Test Count**: ~1,024 total; platform suites now run under integrationTest
 
 ---
 
@@ -779,22 +779,20 @@ NoSuchMethodError: kotlinx.coroutines.CoroutineDispatcher.limitedParallelism$def
 
 **Solution Applied**: Extract business logic to ViewModels, test ViewModels comprehensively (achieved 92-99% coverage for ViewModels).
 
-**Remaining Gap**: UI-specific code (widget creation, layout, event handlers) remains untested.
+**Current Plan**: Move UI/platform coverage to IntelliJ Starter/Driver integration tests under `src/integrationTest`. Legacy BasePlatformTestCase suites are excluded from `test` due to initialization failures.
 
-### 2. Coroutines Compatibility Issue
+### 2. BasePlatformTestCase Initialization Failures (Blocking)
 
-**Issue**: Platform tests fail with:
-```
-NoSuchMethodError: kotlinx.coroutines.CoroutineDispatcher.limitedParallelism$default
-```
+**Issue**: Platform tests fail before execution with IntelliJ coroutines/PathManager initialization errors (e.g., `NoSuchMethodError: kotlinx.coroutines.CoroutineDispatcher.limitedParallelism$default`, PathManager runtime exceptions).
 
-**Root Cause**: Version mismatch between kotlinx-coroutines-test 1.7.3 and IntelliJ Platform's coroutines usage.
+**Root Cause**: Mismatch between bundled IntelliJ coroutines facade and test classpath when using BasePlatformTestCase on current platform.
 
 **Affected Tests**:
-- SessionListDialogPlatformTest (21 tests disabled)
-- FileUtilsPlatformTest (8 tests disabled)
+- SessionListDialogPlatformTest
+- FileUtilsPlatformTest
+- OpenCodeFileEditorPlatformTest / ProviderPlatformTest (two package variants)
 
-**Workaround**: Created component-level tests that test in isolation without platform infrastructure.
+**Status/Workaround**: Excluded from `test` task to unblock unit tests. Platform coverage to be reintroduced via Starter/Driver `integrationTest` task.
 
 ### 3. Terminal Widget Dependencies
 
@@ -835,13 +833,16 @@ NoSuchMethodError: kotlinx.coroutines.CoroutineDispatcher.limitedParallelism$def
 ### Running Tests
 
 ```bash
-# Run all tests
+# Unit tests only (BasePlatformTestCase suites excluded)
 ./gradlew test --continue
 
-# Run specific test class
+# Integration/platform tests via IntelliJ Starter/Driver (requires Xvfb/DISPLAY)
+./gradlew integrationTest --info
+
+# Run specific unit test class
 ./gradlew test --tests "ClassName"
 
-# Run specific test method
+# Run specific unit test method
 ./gradlew test --tests "ClassName.test method name"
 
 # Run with detailed output
@@ -912,15 +913,23 @@ cat build/reports/kover/report.xml
 
 ## Coverage Goals & Progress
 
-### Overall Progress
+### Overall Progress (unit tests)
 
 ```
 Baseline (Session 1):      35.20%
-Current (Session 10):      72.12%
-Improvement:               +36.92 percentage points
-Relative Increase:         104.9%
-Tests Added:               +812 tests (211 → 1,023)
+Current (pre-Starter shift): ~72%
+Improvement:               +~37 percentage points
+Relative Increase:         ~105%
+Tests Added:               ~800+
 ```
+
+### Platform Coverage Plan (Starter/Driver)
+- Move platform/UI scenarios to `integrationTest` using IntelliJ Starter/Driver.
+- Start with smoke: IDE boots with plugin, smart mode, background tasks idle.
+- Next scenarios: editor open/split, tool window visibility, settings panel open/save, actions enablement, session file load.
+- Run via `./gradlew integrationTest --info` with Xvfb (`DISPLAY` set).
+- `integrationTest` task now also runs previously excluded `*PlatformTest*` suites alongside Starter-based tests (see build.gradle.kts).
+- Use `-Dpath.to.build.plugin` auto-provided by Gradle task (prepareSandbox).
 
 ### Session-by-Session Breakdown
 
@@ -939,6 +948,9 @@ Tests Added:               +812 tests (211 → 1,023)
 | 10 | 72.12% | +0.00 | +82 | Architectural ceiling discovery |
 
 ### Coverage Target Analysis
+- Short-term: restore green unit `test` by excluding BasePlatformTestCase suites (moved to Starter).
+- Medium-term: add Starter-based platform coverage to reach 80-85% overall.
+- Long-term: refine scenarios and stabilize CI with Xvfb + cache for IDE downloads.
 
 **Original Target**: 85% coverage
 
@@ -1110,6 +1122,23 @@ The 72% coverage represents:
 ---
 
 ## Platform Tests Implementation Plan
+
+### 85% Coverage Platform Test Plan (2025-12-26 refresh)
+
+- Strategy: Use IntelliJ Starter/Driver integration tests for UI/platform gaps; keep headless, JUnit 5, real components over mocks. Enforce no-ERROR-logs and retry flakiness (@RepeatedIfExceptionsTest).
+- Targets: Raise coverage for OpenCodeEditorPanel (~0→70%), OpenCodeFileEditor (~59→75%), OpenCodeToolWindowPanel (~0→60%), OpenCodeConfigurable UI (~57→75%), action update paths (~30→70%). Expected gain: +13 pts to ~85%.
+- Prereqs: Coroutines remain compileOnly core/swing 1.10.2; testImplementation coroutines-test. Ensure OpenCodePlatformTestBase has EDT/action/toolwindow/editor/log helpers; use createMockSession(); setting is autoRestartOnExit. Add sendInterruptSignal/getProcessState to service before CTRL+C tests if needed.
+- Gradle/CI: Run under Xvfb (DISPLAY=:99), ./gradlew test --continue, then koverHtmlReport, JVM opts -Xmx4g -XX:MaxMetaspaceSize=1g. If heavier isolation needed, add integrationTest source set with intellijPlatform { testFramework(TestFrameworkType.Starter) } and path.to.build.plugin. Keep retry dep io.github.artsok:rerunner-jupiter:2.1.6.
+- Work plan:
+  1) Re-enable/stabilize EditorSplittingSessionPersistencePlatformTest (30 tests); handle split/float/persist; gate coroutines facade issues if appear.
+  2) Tool window platform tests (~25): open/close/visibility/content/disposal/log assertions.
+  3) Settings UI (~15): open configurable, toggle/apply/reset autoRestartOnExit, persist, no error logs.
+  4) Action update/enablement (~25): OpenInEditorAction, ToggleToolWindowAction, session actions with TestActionEvent contexts.
+  5) Editor lifecycle/platform glue (~25): terminal init guards, placeholder, error dialog (headless), reopen/reconnect, dispose.
+  6) CTRL+C/auto-restart (~25) after service APIs: exit with autoRestart on/off, assert process state, no error logs.
+  7) Stability: global log-capture assertion, retries on UI-timing tests, cleanup (closeAllEditors, toolwindow hide) in @AfterEach.
+- Risk/Mitigation: Coroutines facade incompatibility → stick to platform coroutines; if needed, use Starter integrationTest source set. UI timing → retries + EDT helpers + advanceUntilIdle. Hidden IDE exceptions → log capture fail-fast.
+- Success: 145 new/reenabled platform tests pass locally/CI; coverage ≥85%; zero ERROR logs; runtime acceptable with parallelization where safe.
 
 ### Overview
 
@@ -1749,9 +1778,14 @@ jobs:
 
 **Duration**: 54-67 hours  
 **Priority**: HIGH  
-**Status**: Not started
+**Status**: In progress (integrationTest wired; PlatformTest suites routed here)
 
 This phase implements 145 new platform tests across 7 test files, organized by priority as specified by the user.
+
+**Recent changes (2025-12-26)**:
+- `integrationTest` Gradle task now aggregates Starter/Driver tests (`src/integrationTest`) and legacy `*PlatformTest*` suites from `src/test` so they execute under the Starter/Driver umbrella with the plugin built via `prepareSandbox`.
+- Filters applied to focus on Starter smoke and PlatformTest classes; unit suite remains on `test` task.
+- `check` now depends on `integrationTest` to ensure platform coverage runs in CI.
 
 ---
 

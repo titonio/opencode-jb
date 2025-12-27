@@ -20,6 +20,11 @@ class MockServerManager(
     val isStopped: Boolean
         get() = stopped
     
+    /** Optional stub for session configuration; used by platform helpers. */
+    fun configureSession(@Suppress("UNUSED_PARAMETER") response: com.opencode.model.SessionResponse) {
+        // No-op placeholder for platform tests needing a hook
+    }
+    
     override suspend fun getOrStartServer(): Int? {
         return if (shouldSucceed) {
             started = true

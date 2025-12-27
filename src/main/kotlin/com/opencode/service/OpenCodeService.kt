@@ -203,7 +203,7 @@ class OpenCodeService(
      */
     suspend fun listSessions(forceRefresh: Boolean = false): List<SessionInfo> {
         val now = System.currentTimeMillis()
-        if (!forceRefresh && now - lastCacheUpdate < CACHE_TTL && sessionCache.isNotEmpty()) {
+        if (!forceRefresh && now - lastCacheUpdate <= CACHE_TTL && sessionCache.isNotEmpty()) {
             return sessionCache.values.sortedByDescending { it.time.updated }
         }
         
