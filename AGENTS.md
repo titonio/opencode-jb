@@ -970,6 +970,11 @@ fun isOpencodeInstalled(): Boolean {
     }
 }
 ```
+## Tools
+
+- If you are unsure how to do something, use `gh_grep` to search code examples from GitHub.
+- When you need to search docs, use `context7` tools.
+- run in 'subagent' mode for multi-step tasks.
 
 ---
 
