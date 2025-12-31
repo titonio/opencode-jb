@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.*
+import java.io.IOException
 import javax.swing.JOptionPane
 
 /**
@@ -273,8 +274,9 @@ class NewSessionActionComprehensiveTest {
             }.thenReturn(testTitle)
 
             // Mock service to throw exception
-            whenever(runBlocking { mockService.createSession(any()) })
-                .thenThrow(RuntimeException(errorMessage))
+            runBlocking {
+                whenever(mockService.createSession(any())).thenAnswer { throw IOException(errorMessage) }
+            }
 
             action.actionPerformed(mockEvent)
 
@@ -316,8 +318,9 @@ class NewSessionActionComprehensiveTest {
             }.thenReturn(testTitle)
 
             // Mock service to throw exception without message
-            whenever(runBlocking { mockService.createSession(any()) })
-                .thenThrow(RuntimeException())
+            runBlocking {
+                whenever(mockService.createSession(any())).thenAnswer { throw IOException("I/O error") }
+            }
 
             action.actionPerformed(mockEvent)
 

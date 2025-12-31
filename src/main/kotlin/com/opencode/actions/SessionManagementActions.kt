@@ -76,29 +76,35 @@ class NewSessionAction : AnAction("New OpenCode Session") {
             "Enter session title (optional):",
             "New OpenCode Session",
             javax.swing.JOptionPane.PLAIN_MESSAGE
-        )
+        ) ?: return
 
-        if (title == null) {
-            return
-        }
-
-        val sessionId = try {
+        val sessionId: String? = try {
             kotlinx.coroutines.runBlocking {
                 service.createSession(if (title.isBlank()) null else title)
             }
-        } catch (e: Exception) {
+        } catch (e: java.io.IOException) {
             javax.swing.JOptionPane.showMessageDialog(
                 null,
                 "Failed to create session: ${e.message ?: "Unknown error"}",
                 "Error",
                 javax.swing.JOptionPane.ERROR_MESSAGE
             )
-            return
+            null
+        } catch (e: com.google.gson.JsonSyntaxException) {
+            javax.swing.JOptionPane.showMessageDialog(
+                null,
+                "Failed to create session: ${e.message ?: "Unknown error"}",
+                "Error",
+                javax.swing.JOptionPane.ERROR_MESSAGE
+            )
+            null
         }
 
-        val virtualFile = OpenCodeFileSystem.getInstance()
-            .findFileByPath(OpenCodeFileSystem.buildUrl(sessionId))!!
-        FileEditorManager.getInstance(project).openFile(virtualFile, true)
+        if (sessionId != null) {
+            val virtualFile = OpenCodeFileSystem.getInstance()
+                .findFileByPath(OpenCodeFileSystem.buildUrl(sessionId))!!
+            FileEditorManager.getInstance(project).openFile(virtualFile, true)
+        }
     }
 
     /**
