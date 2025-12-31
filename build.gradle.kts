@@ -5,6 +5,7 @@ plugins {
     id("org.jetbrains.kotlin.jvm") version "2.3.0"
     id("org.jetbrains.intellij.platform") version "2.10.5"
     id("org.jetbrains.kotlinx.kover") version "0.7.5"
+    id("io.gitlab.arturbosch.detekt") version "1.23.6"
 }
 
 group = providers.gradleProperty("pluginGroup").get()
@@ -22,7 +23,7 @@ dependencies {
         intellijIdea(providers.gradleProperty("platformVersion"))
         bundledPlugin("com.intellij.java")
         bundledPlugin("org.jetbrains.plugins.terminal")
-        
+
         testFramework(TestFrameworkType.Platform)
         testFramework(TestFrameworkType.JUnit5)
     }
@@ -32,11 +33,14 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp-sse:4.12.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.0")
     implementation("com.google.code.gson:gson:2.10.1")
-    
+
     // Use Platform's bundled coroutines instead of forcing our own version
     compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.10.2")
-    
+
+    // Detekt formatting ruleset
+    detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.23.6")
+
     // Testing dependencies
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
@@ -101,4 +105,18 @@ koverReport {
             minBound(35)
         }
     }
+}
+
+detekt {
+    config.setFrom(files("config/detekt/detekt.yml"))
+    buildUponDefaultConfig = true
+    allRules = false
+
+    // Add source set exclusion
+    source.setFrom(
+        files(
+            "src/main/kotlin",
+            "src/main/java"
+        )
+    )
 }

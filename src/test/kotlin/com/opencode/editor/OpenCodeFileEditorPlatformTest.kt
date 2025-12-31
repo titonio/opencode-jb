@@ -4,7 +4,6 @@ import com.intellij.openapi.fileEditor.FileEditorStateLevel
 import com.intellij.testFramework.replaceService
 import com.opencode.service.OpenCodeService
 import com.opencode.test.OpenCodePlatformTestBase
-import com.opencode.test.TestDataFactory
 import com.opencode.vfs.OpenCodeFileSystem
 import com.opencode.vfs.OpenCodeVirtualFile
 import kotlinx.coroutines.runBlocking
@@ -23,18 +22,18 @@ class OpenCodeFileEditorPlatformTest : OpenCodePlatformTestBase() {
 
     override fun setUp() {
         super.setUp()
-        
+
         // Mock service
         mockService = mock()
         whenever(mockService.isOpencodeInstalled()).thenReturn(true)
-        
+
         // Register mock service
         project.replaceService(OpenCodeService::class.java, mockService, testRootDisposable)
-        
-        // Create a real OpenCodeVirtualFile. 
+
+        // Create a real OpenCodeVirtualFile.
         val mockFileSystem = mock<OpenCodeFileSystem>()
         whenever(mockFileSystem.protocol).thenReturn(OpenCodeFileSystem.PROTOCOL)
-        
+
         mockFile = OpenCodeVirtualFile(mockFileSystem, testSessionId)
     }
 
@@ -62,7 +61,7 @@ class OpenCodeFileEditorPlatformTest : OpenCodePlatformTestBase() {
         // Assert
         verify(mockService).isOpencodeInstalled()
     }
-    
+
     fun `test initialization with sessionId from file uses provided session`() {
         // Arrange
         val mockFileSystem = mock<OpenCodeFileSystem>()
@@ -131,7 +130,7 @@ class OpenCodeFileEditorPlatformTest : OpenCodePlatformTestBase() {
     fun `test getState returns OpenCodeEditorState with current values`() {
         // Arrange
         val editor = OpenCodeFileEditor(project, mockFile)
-        
+
         val inputState = OpenCodeEditorState("state-session-123", 9000)
         editor.setState(inputState)
 

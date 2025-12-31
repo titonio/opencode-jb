@@ -22,10 +22,10 @@ class OpenCodeFileEditorProviderPlatformTest : OpenCodePlatformTestBase() {
     override fun setUp() {
         super.setUp()
         provider = OpenCodeFileEditorProvider()
-        
+
         mockFileSystem = mock()
         whenever(mockFileSystem.protocol).thenReturn(OpenCodeFileSystem.PROTOCOL)
-        
+
         // Mock service for editor creation
         mockService = mock()
         whenever(mockService.isOpencodeInstalled()).thenReturn(true)

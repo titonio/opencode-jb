@@ -4,48 +4,44 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
-import com.opencode.model.SessionInfo
 import com.opencode.service.OpenCodeService
 import com.opencode.test.TestDataFactory
 import com.opencode.ui.SessionListDialog
 import com.opencode.vfs.OpenCodeFileSystem
-import com.opencode.vfs.OpenCodeVirtualFile
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.MockedConstruction
-import org.mockito.MockedStatic
 import org.mockito.Mockito
 import org.mockito.kotlin.*
 
 /**
  * Comprehensive coverage tests for ListSessionsAction focused on dialog interaction and file opening.
- * 
+ *
  * Target: Increase coverage from 36.4% (4/11 lines) to 80%+ (9+/11 lines)
- * 
+ *
  * These tests specifically cover the uncovered lines 20-28:
  * - Line 17: Service retrieval from project
  * - Line 20: Dialog construction with project and service
  * - Line 21: Dialog.showAndGet() call and result handling
  * - Lines 22-23: Getting selected session from dialog
  * - Lines 25-27: Virtual file creation and file opening via FileEditorManager
- * 
+ *
  * Coverage improvements:
  * - Tests dialog construction and showing
- * - Tests user confirming with session selection  
+ * - Tests user confirming with session selection
  * - Tests user cancelling dialog
  * - Tests null session handling
  * - Tests file system and editor manager interaction
  */
 class ListSessionsActionDialogTest {
-    
+
     private lateinit var action: ListSessionsAction
     private lateinit var mockEvent: AnActionEvent
     private lateinit var mockProject: Project
     private lateinit var mockPresentation: Presentation
     private lateinit var mockService: OpenCodeService
-    
+
     @BeforeEach
     fun setUp() {
         action = ListSessionsAction()
@@ -53,26 +49,26 @@ class ListSessionsActionDialogTest {
         mockProject = mock()
         mockPresentation = mock()
         mockService = mock()
-        
+
         whenever(mockEvent.presentation).thenReturn(mockPresentation)
         whenever(mockProject.name).thenReturn("TestProject")
         whenever(mockProject.basePath).thenReturn("/test/project")
         whenever(mockProject.getService(OpenCodeService::class.java)).thenReturn(mockService)
     }
-    
+
     @AfterEach
     fun tearDown() {
         // Cleanup
     }
-    
+
     // ========== Dialog Construction Tests ==========
-    
+
     @Test
     fun `test actionPerformed creates SessionListDialog with correct parameters`() {
         var dialogConstructorCalled = false
         var constructorProject: Project? = null
         var constructorService: OpenCodeService? = null
-        
+
         Mockito.mockConstruction(SessionListDialog::class.java) { mock, context ->
             dialogConstructorCalled = true
             if (context.arguments().size >= 2) {
@@ -83,19 +79,19 @@ class ListSessionsActionDialogTest {
             whenever(mock.showAndGet()).thenReturn(false)
         }.use {
             whenever(mockEvent.project).thenReturn(mockProject)
-            
+
             action.actionPerformed(mockEvent)
-            
+
             assertTrue(dialogConstructorCalled, "Dialog constructor should be called")
             assertSame(mockProject, constructorProject, "Dialog should receive correct project")
             assertSame(mockService, constructorService, "Dialog should receive correct service")
         }
     }
-    
+
     @Test
     fun `test actionPerformed calls showAndGet on dialog`() {
         var showAndGetCalled = false
-        
+
         Mockito.mockConstruction(SessionListDialog::class.java) { mock, _ ->
             whenever(mock.showAndGet()).thenAnswer {
                 showAndGetCalled = true
@@ -103,17 +99,17 @@ class ListSessionsActionDialogTest {
             }
         }.use {
             whenever(mockEvent.project).thenReturn(mockProject)
-            
+
             action.actionPerformed(mockEvent)
-            
+
             assertTrue(showAndGetCalled, "showAndGet should be called on dialog")
         }
     }
-    
+
     @Test
     fun `test actionPerformed retrieves service from project`() {
         var serviceRetrieved = false
-        
+
         val customMockProject = mock<Project> {
             on { name } doReturn "TestProject"
             on { basePath } doReturn "/test/project"
@@ -122,73 +118,73 @@ class ListSessionsActionDialogTest {
                 mockService
             }
         }
-        
+
         Mockito.mockConstruction(SessionListDialog::class.java) { mock, _ ->
             whenever(mock.showAndGet()).thenReturn(false)
         }.use {
             whenever(mockEvent.project).thenReturn(customMockProject)
-            
+
             action.actionPerformed(mockEvent)
-            
+
             assertTrue(serviceRetrieved, "Service should be retrieved from project")
         }
     }
-    
+
     // ========== Dialog Result Handling Tests ==========
-    
+
     @Test
     fun `test actionPerformed when user cancels dialog does not call getSelectedSession`() {
         var getSelectedSessionCalled = false
-        
+
         Mockito.mockConstruction(SessionListDialog::class.java) { mock, _ ->
-            whenever(mock.showAndGet()).thenReturn(false)  // User cancelled
+            whenever(mock.showAndGet()).thenReturn(false) // User cancelled
             whenever(mock.getSelectedSession()).thenAnswer {
                 getSelectedSessionCalled = true
                 null
             }
         }.use {
             whenever(mockEvent.project).thenReturn(mockProject)
-            
+
             action.actionPerformed(mockEvent)
-            
+
             // When dialog returns false, we shouldn't even check for selected session
             assertFalse(getSelectedSessionCalled, "getSelectedSession should not be called when user cancels")
         }
     }
-    
+
     @Test
     fun `test actionPerformed when user confirms calls getSelectedSession`() {
         var getSelectedSessionCalled = false
-        
+
         Mockito.mockConstruction(SessionListDialog::class.java) { mock, _ ->
-            whenever(mock.showAndGet()).thenReturn(true)  // User confirmed
+            whenever(mock.showAndGet()).thenReturn(true) // User confirmed
             whenever(mock.getSelectedSession()).thenAnswer {
                 getSelectedSessionCalled = true
-                null  // But no session selected
+                null // But no session selected
             }
         }.use {
             whenever(mockEvent.project).thenReturn(mockProject)
-            
+
             action.actionPerformed(mockEvent)
-            
+
             assertTrue(getSelectedSessionCalled, "getSelectedSession should be called when user confirms")
         }
     }
-    
+
     @Test
     fun `test actionPerformed when user confirms with null session does not open file`() {
         val fileSystemMock = Mockito.mockStatic(OpenCodeFileSystem::class.java)
         val editorManagerMock = Mockito.mockStatic(FileEditorManager::class.java)
-        
+
         try {
             Mockito.mockConstruction(SessionListDialog::class.java) { mock, _ ->
                 whenever(mock.showAndGet()).thenReturn(true)
-                whenever(mock.getSelectedSession()).thenReturn(null)  // No session selected
+                whenever(mock.getSelectedSession()).thenReturn(null) // No session selected
             }.use {
                 whenever(mockEvent.project).thenReturn(mockProject)
-                
+
                 action.actionPerformed(mockEvent)
-                
+
                 // Should not attempt to open file when session is null
                 fileSystemMock.verifyNoInteractions()
                 editorManagerMock.verifyNoInteractions()
@@ -198,9 +194,9 @@ class ListSessionsActionDialogTest {
             editorManagerMock.close()
         }
     }
-    
+
     // ========== Session Selection and File Opening Tests ==========
-    
+
     @Test
     fun `test actionPerformed with selected session attempts to open file`() {
         val testSession = TestDataFactory.createSessionInfo(

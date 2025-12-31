@@ -12,40 +12,40 @@ import java.util.concurrent.TimeUnit
 /**
  * Mock HTTP server for testing OpenCode API interactions.
  * Wraps MockWebServer with OpenCode-specific convenience methods.
- * 
+ *
  * Supports two modes:
  * 1. Queue mode (default): Enqueue responses in order
  * 2. Dispatcher mode: Handle requests dynamically based on path/method
  */
 class MockOpenCodeServer {
-    
+
     private val server = MockWebServer()
     private val gson = Gson()
-    
+
     val port: Int
         get() = server.port
-    
+
     val url: String
         get() = server.url("/").toString().trimEnd('/')
-    
+
     /**
      * Start the mock server.
      */
     fun start() {
         server.start()
     }
-    
+
     /**
      * Shutdown the mock server.
      */
     fun shutdown() {
         server.shutdown()
     }
-    
+
     /**
      * Set up a smart dispatcher that handles all standard API requests.
      * This is more robust than queueing responses as it handles requests in any order.
-     * 
+     *
      * @param sessions Sessions to return for GET /session
      * @param getSessionResponse Specific session to return for GET /session/{id}
      * @param createResponse Response for POST /session
@@ -67,16 +67,16 @@ class MockOpenCodeServer {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.path ?: return errorResponse(404, "Not Found")
                 val method = request.method ?: "GET"
-                
+
                 // Strip query parameters for easier matching
                 val pathWithoutQuery = path.split('?')[0]
-                
+
                 return when {
                     // GET /session - List sessions
                     pathWithoutQuery == "/session" && method == "GET" -> {
                         successResponse(gson.toJson(sessions))
                     }
-                    
+
                     // GET /session/{id} - Get specific session
                     pathWithoutQuery.matches(Regex("/session/[^/]+")) && method == "GET" -> {
                         if (getSessionResponse != null) {
@@ -85,7 +85,7 @@ class MockOpenCodeServer {
                             errorResponse(404, "Session not found")
                         }
                     }
-                    
+
                     // POST /session - Create session
                     pathWithoutQuery == "/session" && method == "POST" -> {
                         if (createResponse != null) {
@@ -94,7 +94,7 @@ class MockOpenCodeServer {
                             errorResponse(500, "Create response not configured")
                         }
                     }
-                    
+
                     // DELETE /session/{id} - Delete session
                     pathWithoutQuery.startsWith("/session/") && method == "DELETE" && !pathWithoutQuery.endsWith("/share") -> {
                         if (deleteSuccess) {
@@ -103,7 +103,7 @@ class MockOpenCodeServer {
                             errorResponse(500, "Delete failed")
                         }
                     }
-                    
+
                     // POST /session/{id}/share - Share session
                     pathWithoutQuery.matches(Regex("/session/[^/]+/share")) && method == "POST" -> {
                         when {
@@ -112,7 +112,7 @@ class MockOpenCodeServer {
                             else -> errorResponse(500, "Share failed")
                         }
                     }
-                    
+
                     // DELETE /session/{id}/share - Unshare session
                     pathWithoutQuery.matches(Regex("/session/[^/]+/share")) && method == "DELETE" -> {
                         if (unshareSuccess) {
@@ -121,18 +121,18 @@ class MockOpenCodeServer {
                             errorResponse(500, "Unshare failed")
                         }
                     }
-                    
+
                     else -> errorResponse(404, "Not Found: $method $path")
                 }
             }
-            
+
             private fun successResponse(body: String): MockResponse {
                 return MockResponse()
                     .setResponseCode(200)
                     .setBody(body)
                     .addHeader("Content-Type", "application/json")
             }
-            
+
             private fun errorResponse(code: Int, message: String): MockResponse {
                 return MockResponse()
                     .setResponseCode(code)
@@ -141,7 +141,7 @@ class MockOpenCodeServer {
             }
         }
     }
-    
+
     /**
      * Enqueue a successful session list response.
      */
@@ -154,7 +154,7 @@ class MockOpenCodeServer {
                 .addHeader("Content-Type", "application/json")
         )
     }
-    
+
     /**
      * Enqueue a successful session creation response.
      */
@@ -167,7 +167,7 @@ class MockOpenCodeServer {
                 .addHeader("Content-Type", "application/json")
         )
     }
-    
+
     /**
      * Enqueue a successful session detail response.
      */
@@ -180,7 +180,7 @@ class MockOpenCodeServer {
                 .addHeader("Content-Type", "application/json")
         )
     }
-    
+
     /**
      * Enqueue a successful empty response (for DELETE, etc.).
      */
@@ -192,7 +192,7 @@ class MockOpenCodeServer {
                 .addHeader("Content-Type", "application/json")
         )
     }
-    
+
     /**
      * Enqueue an error response.
      */
@@ -204,7 +204,7 @@ class MockOpenCodeServer {
                 .addHeader("Content-Type", "application/json")
         )
     }
-    
+
     /**
      * Enqueue a network error (socket timeout).
      */
@@ -214,7 +214,7 @@ class MockOpenCodeServer {
                 .setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.NO_RESPONSE)
         )
     }
-    
+
     /**
      * Enqueue malformed JSON response.
      */
@@ -226,14 +226,14 @@ class MockOpenCodeServer {
                 .addHeader("Content-Type", "application/json")
         )
     }
-    
+
     /**
      * Take and return the next request received by the server.
      */
     fun takeRequest(timeout: Long = 1, unit: TimeUnit = TimeUnit.SECONDS): RecordedRequest? {
         return server.takeRequest(timeout, unit)
     }
-    
+
     /**
      * Get the number of requests received.
      */

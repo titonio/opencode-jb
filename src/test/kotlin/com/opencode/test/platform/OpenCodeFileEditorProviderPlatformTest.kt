@@ -1,6 +1,5 @@
 package com.opencode.test.platform
 
-import com.intellij.openapi.project.Project
 import com.intellij.testFramework.replaceService
 import com.opencode.editor.OpenCodeFileEditorProvider
 import com.opencode.service.OpenCodeService

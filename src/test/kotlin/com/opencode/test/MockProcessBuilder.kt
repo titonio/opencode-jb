@@ -4,13 +4,12 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import java.io.ByteArrayInputStream
 import java.io.InputStream
-import java.util.concurrent.TimeUnit
 
 /**
  * Utilities for mocking Process and ProcessBuilder for CLI testing.
  */
 object MockProcessBuilder {
-    
+
     /**
      * Create a mock Process that simulates successful CLI execution.
      */
@@ -20,16 +19,16 @@ object MockProcessBuilder {
     ): Process {
         val process = mock<Process>()
         val outputStream: InputStream = ByteArrayInputStream(output.toByteArray())
-        
+
         whenever(process.inputStream).thenReturn(outputStream)
         whenever(process.errorStream).thenReturn(ByteArrayInputStream(ByteArray(0)))
         whenever(process.waitFor(org.mockito.kotlin.any(), org.mockito.kotlin.any())).thenReturn(true)
         whenever(process.exitValue()).thenReturn(exitCode)
         whenever(process.isAlive).thenReturn(false)
-        
+
         return process
     }
-    
+
     /**
      * Create a mock Process that simulates CLI not found.
      */
@@ -39,30 +38,30 @@ object MockProcessBuilder {
     ): Process {
         val process = mock<Process>()
         val errorStream: InputStream = ByteArrayInputStream(errorOutput.toByteArray())
-        
+
         whenever(process.inputStream).thenReturn(ByteArrayInputStream(ByteArray(0)))
         whenever(process.errorStream).thenReturn(errorStream)
         whenever(process.waitFor(org.mockito.kotlin.any(), org.mockito.kotlin.any())).thenReturn(true)
         whenever(process.exitValue()).thenReturn(exitCode)
         whenever(process.isAlive).thenReturn(false)
-        
+
         return process
     }
-    
+
     /**
      * Create a mock Process that simulates timeout.
      */
     fun createTimeoutProcess(): Process {
         val process = mock<Process>()
-        
+
         whenever(process.inputStream).thenReturn(ByteArrayInputStream(ByteArray(0)))
         whenever(process.errorStream).thenReturn(ByteArrayInputStream(ByteArray(0)))
         whenever(process.waitFor(org.mockito.kotlin.any(), org.mockito.kotlin.any())).thenReturn(false)
         whenever(process.isAlive).thenReturn(true)
-        
+
         return process
     }
-    
+
     /**
      * Create a mock Process that simulates a running server process.
      */
@@ -70,18 +69,18 @@ object MockProcessBuilder {
         val process = mock<Process>()
         val output = "OpenCode server started on port $port"
         val outputStream: InputStream = ByteArrayInputStream(output.toByteArray())
-        
+
         whenever(process.inputStream).thenReturn(outputStream)
         whenever(process.errorStream).thenReturn(ByteArrayInputStream(ByteArray(0)))
         whenever(process.isAlive).thenReturn(true)
-        whenever(process.waitFor()).thenAnswer { 
+        whenever(process.waitFor()).thenAnswer {
             Thread.sleep(Long.MAX_VALUE) // Simulate long-running process
-            0 
+            0
         }
-        
+
         return process
     }
-    
+
     /**
      * Create a mock ProcessBuilder that returns the given process.
      */

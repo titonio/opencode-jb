@@ -2,7 +2,6 @@ package com.opencode.test
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.opencode.service.OpenCodeService
-import org.mockito.Mockito
 import org.mockito.kotlin.mock
 
 /**
@@ -10,21 +9,21 @@ import org.mockito.kotlin.mock
  * Extends BasePlatformTestCase to get IntelliJ Platform test infrastructure.
  */
 abstract class OpenCodeTestBase : BasePlatformTestCase() {
-    
+
     /**
      * Create a mock OpenCodeService for testing.
      */
     protected fun createMockService(): OpenCodeService {
         return mock()
     }
-    
+
     /**
      * Get the test data path for loading test resources.
      */
     override fun getTestDataPath(): String {
         return "src/test/resources/testdata"
     }
-    
+
     /**
      * Ensure proper cleanup in tearDown.
      */

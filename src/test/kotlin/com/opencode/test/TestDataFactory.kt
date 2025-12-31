@@ -8,7 +8,7 @@ import java.util.UUID
  * Generates SessionInfo, requests, and other test data programmatically.
  */
 object TestDataFactory {
-    
+
     /**
      * Create a SessionInfo with default or custom values.
      */
@@ -26,7 +26,7 @@ object TestDataFactory {
         val shareInfo = if (shareUrl != null) ShareInfo(shareUrl) else null
         return SessionInfo(id, title, directory, projectID, timeInfo, shareInfo)
     }
-    
+
     /**
      * Create a list of SessionInfo objects for testing.
      */
@@ -39,14 +39,14 @@ object TestDataFactory {
             )
         }
     }
-    
+
     /**
      * Create a CreateSessionRequest.
      */
     fun createSessionRequest(title: String = "Test Session"): CreateSessionRequest {
         return CreateSessionRequest(title)
     }
-    
+
     /**
      * Create a SessionResponse.
      */
@@ -57,7 +57,7 @@ object TestDataFactory {
     ): SessionResponse {
         return SessionResponse(id, title, directory)
     }
-    
+
     /**
      * Create a shared SessionInfo.
      */
