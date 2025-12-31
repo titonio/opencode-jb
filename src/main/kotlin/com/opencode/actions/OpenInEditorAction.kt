@@ -3,11 +3,14 @@ package com.opencode.actions
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.opencode.service.OpenCodeService
 import com.opencode.vfs.OpenCodeFileSystem
 import kotlinx.coroutines.runBlocking
 import java.io.IOException
+
+private val LOG = logger<OpenInEditorAction>()
 
 /**
  * Action that creates a new OpenCode session and opens it in an editor tab.

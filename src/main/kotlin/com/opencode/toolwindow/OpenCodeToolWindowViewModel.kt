@@ -27,8 +27,6 @@ class OpenCodeToolWindowViewModel(
     private val scope: CoroutineScope
 ) {
 
-    private var callback: ViewCallback? = null
-
     @Volatile
     private var currentState: State = State.INITIALIZING
 
@@ -38,59 +36,7 @@ class OpenCodeToolWindowViewModel(
     @Volatile
     private var isMonitoring = false
 
-    /**
-     * Returns the current state of the ViewModel.
-     *
-     * @return The current State enum value
-     */
-    fun getState(): State = currentState
-
-    /**
-     * Returns the currently allocated port number, if any.
-     *
-     * @return The port number, or null if no port has been allocated
-     */
-    fun getCurrentPort(): Int? = currentPort
-
-    /**
-     * Sets the callback to receive ViewModel updates.
-     * Only one callback can be registered at a time.
-     *
-     * @param callback The ViewCallback implementation to receive state changes, errors, and port allocations
-     */
-    fun setCallback(callback: ViewCallback) {
-        this.callback = callback
-    }
-
-    /**
-     * Initializes the ViewModel by allocating a random port and starting process monitoring.
-     * This is the main entry point for initializing the tool window.
-     *
-     * Transition sequence: INITIALIZING → allocate port → RUNNING → start monitoring
-     */
-    fun initialize() {
-        // LOG.info("Initializing OpenCode terminal in tool window")
-        setState(State.INITIALIZING)
-
-        // Allocate a random port in the ephemeral range
-        val port = Random.nextInt(MIN_PORT, MAX_PORT)
-        currentPort = port
-
-        // LOG.info("Port allocated: $port")
-        callback?.onPortReady(port)
-
-        // Transition to RUNNING and start monitoring
-        setState(State.RUNNING)
-        startProcessMonitoring()
-    }
-
-    /**
-     * Companion object holding constants that define the allowable port range for the OpenCode server.
-     */
-    companion object {
-        private const val MIN_PORT = 16384
-        private const val MAX_PORT = 65536
-    }
+    private var callback: ViewCallback? = null
 
     /**
      * Represents the current state of the OpenCode process managed by this ViewModel.
@@ -150,17 +96,6 @@ class OpenCodeToolWindowViewModel(
         fun onProcessExited()
     }
 
-    private var callback: ViewCallback? = null
-
-    @Volatile
-    private var currentState: State = State.INITIALIZING
-
-    @Volatile
-    private var currentPort: Int? = null
-
-    @Volatile
-    private var isMonitoring = false
-
     /**
      * Returns the current state of the ViewModel.
      *
@@ -192,17 +127,13 @@ class OpenCodeToolWindowViewModel(
      * Transition sequence: INITIALIZING → allocate port → RUNNING → start monitoring
      */
     fun initialize() {
-        // LOG.info("Initializing OpenCode terminal in tool window")
         setState(State.INITIALIZING)
 
-        // Allocate a random port in the ephemeral range
         val port = Random.nextInt(MIN_PORT, MAX_PORT)
         currentPort = port
 
-        // LOG.info("Port allocated: $port")
         callback?.onPortReady(port)
 
-        // Transition to RUNNING and start monitoring
         setState(State.RUNNING)
         startProcessMonitoring()
     }
@@ -216,28 +147,22 @@ class OpenCodeToolWindowViewModel(
      */
     fun startProcessMonitoring() {
         if (isMonitoring) {
-            // LOG.warn("Process monitoring already active, ignoring start request")
             return
         }
 
         isMonitoring = true
 
         scope.launch {
-            // LOG.debug("Process monitoring coroutine started")
-
             while (isActive && isMonitoring && currentState == State.RUNNING) {
                 delay(1000)
 
                 val isAlive = checkServerHealth()
 
                 if (!isAlive) {
-                    // println("OpenCode terminal process has exited")
                     handleProcessExit(autoRestartEnabled = getAutoRestartSetting())
                     break
                 }
             }
-
-            // LOG.debug("Process monitoring coroutine stopped")
         }
     }
 
@@ -248,11 +173,9 @@ class OpenCodeToolWindowViewModel(
      */
     fun stopProcessMonitoring() {
         if (!isMonitoring) {
-            // LOG.debug("Process monitoring not active, ignoring stop request")
             return
         }
 
-        // LOG.info("Stopping process monitoring")
         isMonitoring = false
     }
 
@@ -266,8 +189,7 @@ class OpenCodeToolWindowViewModel(
         val port = currentPort ?: return false
 
         return try {
-            val isRunning = service.isServerRunning(port)
-            isRunning
+            service.isServerRunning(port)
         } catch (e: CancellationException) {
             throw e
         } catch (e: IOException) {
@@ -286,21 +208,16 @@ class OpenCodeToolWindowViewModel(
      */
     fun handleProcessExit(autoRestartEnabled: Boolean) {
         if (currentState != State.RUNNING) {
-            // LOG.debug("handleProcessExit called but state is $currentState, ignoring")
             return
         }
 
         setState(State.EXITED)
         stopProcessMonitoring()
 
-        // Notify the view
         callback?.onProcessExited()
 
         if (autoRestartEnabled) {
-            // LOG.info("Auto-restart enabled, restarting terminal")
             restart()
-        } else {
-            // LOG.info("Auto-restart disabled, waiting for manual restart")
         }
     }
 
@@ -314,20 +231,13 @@ class OpenCodeToolWindowViewModel(
      */
     fun restart() {
         if (currentState == State.RESTARTING) {
-            // LOG.warn("Restart already in progress, ignoring duplicate request")
             return
         }
 
-        // LOG.info("Restarting OpenCode terminal")
         setState(State.RESTARTING)
 
-        // Stop monitoring
         stopProcessMonitoring()
-
-        // Clear port
         currentPort = null
-
-        // Re-initialize
         initialize()
     }
 
@@ -354,15 +264,13 @@ class OpenCodeToolWindowViewModel(
      * Should be called when the tool window is closed or disposed.
      */
     fun dispose() {
-        // LOG.info("OpenCodeToolWindowViewModel disposed")
-
-        // Stop monitoring
         stopProcessMonitoring()
-
-        // Clear state
         currentPort = null
-
-        // Clear callback
         callback = null
+    }
+
+    companion object {
+        private const val MIN_PORT = 16384
+        private const val MAX_PORT = 65536
     }
 }

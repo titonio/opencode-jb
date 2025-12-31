@@ -285,28 +285,20 @@ class OpenCodeFileEditorIntegrationTest {
     // ========== Property Change Listeners ==========
 
     @Test
-    fun `test addPropertyChangeListener throws UnsupportedOperationException`() {
+    fun `test addPropertyChangeListener adds listener successfully`() {
         val editor = OpenCodeFileEditor(mockProject, mockFile)
         val listener = mock<PropertyChangeListener>()
 
-        val exception = assertThrows(UnsupportedOperationException::class.java) {
-            editor.addPropertyChangeListener(listener)
-        }
-
-        assertEquals("Property change listeners are not supported", exception.message)
+        editor.addPropertyChangeListener(listener)
     }
 
     @Test
-    fun `test removePropertyChangeListener throws UnsupportedOperationException`() {
+    fun `test removePropertyChangeListener removes listener successfully`() {
         val editor = OpenCodeFileEditor(mockProject, mockFile)
         val listener = mock<PropertyChangeListener>()
 
-        val exception = assertThrows(UnsupportedOperationException::class.java) {
-            editor.addPropertyChangeListener(listener)
-            editor.removePropertyChangeListener(listener)
-        }
-
-        assertEquals("Property change listeners are not supported", exception.message)
+        editor.addPropertyChangeListener(listener)
+        editor.removePropertyChangeListener(listener)
     }
 
     // ========== Editor Properties ==========

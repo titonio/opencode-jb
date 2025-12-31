@@ -35,6 +35,7 @@ private val LOG = logger<OpenCodeService>()
  *
  * @property project The IntelliJ project this service is associated with
  */
+@Suppress("TooManyFunctions")
 @Service(Service.Level.PROJECT)
 class OpenCodeService(
     private val project: Project
@@ -264,7 +265,12 @@ class OpenCodeService(
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@withContext emptyList()
 
-                val body = response.body?.string() ?: return@withContext emptyList()
+                val body = response.body?.string()
+                if (body.isNullOrBlank()) {
+                    LOG.warn("Empty response body from server")
+                    return@withContext emptyList()
+                }
+
                 val type = object : TypeToken<List<SessionInfo>>() {}.type
                 val sessions: List<SessionInfo> = gson.fromJson(body, type)
 

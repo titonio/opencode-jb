@@ -29,7 +29,8 @@ class OpenCodeSettings : PersistentStateComponent<OpenCodeSettings.State> {
      * If true, the server will be restarted on the next IDE startup.
      */
     data class State(
-        val autoRestartOnExit: Boolean = false
+        @Suppress("DataClassShouldBeImmutable")
+        var autoRestartOnExit: Boolean = false
     )
 
     private var myState = State()

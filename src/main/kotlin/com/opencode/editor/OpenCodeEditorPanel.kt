@@ -42,6 +42,7 @@ private val LOG = logger<OpenCodeEditorPanel>()
  * @param serverPort Optional server port for the OpenCode instance
  * @param onSessionChanged Callback invoked when session or port changes
  */
+@Suppress("TooManyFunctions")
 class OpenCodeEditorPanel(
     private val project: Project,
     sessionId: String?,

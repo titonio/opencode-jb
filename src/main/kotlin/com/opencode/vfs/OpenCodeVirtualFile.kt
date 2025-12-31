@@ -16,6 +16,7 @@ import java.io.OutputStream
  * @param fileSystem The virtual file system that manages this file
  * @param sessionId The unique identifier of the OpenCode session
  */
+@Suppress("TooManyFunctions")
 class OpenCodeVirtualFile(
     private val fileSystem: OpenCodeFileSystem,
 

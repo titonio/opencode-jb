@@ -31,6 +31,7 @@ private val LOG = logger<OpenCodeFileEditor>()
  * @param project The IntelliJ project instance
  * @param file The virtual file being edited (must be OpenCodeVirtualFile)
  */
+@Suppress("TooManyFunctions")
 class OpenCodeFileEditor(
     private val project: Project,
     private val file: OpenCodeVirtualFile
@@ -41,6 +42,9 @@ class OpenCodeFileEditor(
     private var serverPort: Int? = null
     private var isOpencodeAvailable: Boolean = false
     private var stateWasRestored = false // Track if setState() was called
+
+    // Property change listeners (required by FileEditor interface but not used)
+    private val propertyChangeListeners = mutableListOf<PropertyChangeListener>()
 
     // Use a container panel that we can dynamically update
     private val containerPanel = JPanel(BorderLayout())
@@ -222,11 +226,11 @@ class OpenCodeFileEditor(
      */
     override fun isValid(): Boolean = true
     override fun addPropertyChangeListener(listener: PropertyChangeListener) {
-        throw UnsupportedOperationException("Property change listeners are not supported")
+        propertyChangeListeners.add(listener)
     }
 
     override fun removePropertyChangeListener(listener: PropertyChangeListener) {
-        throw UnsupportedOperationException("Property change listeners are not supported")
+        propertyChangeListeners.remove(listener)
     }
 
     /**

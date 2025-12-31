@@ -1,6 +1,5 @@
 package com.opencode.service
 
-
 /**
  * Interface for managing OpenCode server lifecycle.
  * This abstraction enables testability by allowing injection of mock implementations.

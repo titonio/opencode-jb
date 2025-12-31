@@ -321,7 +321,7 @@ class NewSessionActionComprehensiveTest {
 
             action.actionPerformed(mockEvent)
 
-            // Verify error dialog was shown with null message
+            // Verify error dialog was shown
             jOptionPaneMock.verify {
                 JOptionPane.showMessageDialog(
                     isNull(),

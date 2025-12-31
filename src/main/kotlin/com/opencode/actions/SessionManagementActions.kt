@@ -1,6 +1,5 @@
 package com.opencode.actions
 
-import com.google.gson.JsonParseException
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.components.service
@@ -9,7 +8,6 @@ import com.intellij.openapi.project.Project
 import com.opencode.service.OpenCodeService
 import com.opencode.ui.SessionListDialog
 import com.opencode.vfs.OpenCodeFileSystem
-import java.io.IOException
 
 /**
  * Action to show the session list dialog and open the selected session
@@ -88,18 +86,10 @@ class NewSessionAction : AnAction("New OpenCode Session") {
             kotlinx.coroutines.runBlocking {
                 service.createSession(if (title.isBlank()) null else title)
             }
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             javax.swing.JOptionPane.showMessageDialog(
                 null,
-                "Failed to create session: ${e.message}\nMake sure OpenCode is installed and the server can start.",
-                "Error",
-                javax.swing.JOptionPane.ERROR_MESSAGE
-            )
-            return
-        } catch (e: JsonParseException) {
-            javax.swing.JOptionPane.showMessageDialog(
-                null,
-                "Failed to parse server response: ${e.message}",
+                "Failed to create session: ${e.message ?: "Unknown error"}",
                 "Error",
                 javax.swing.JOptionPane.ERROR_MESSAGE
             )
