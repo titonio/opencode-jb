@@ -1,0 +1,106 @@
+# GitHub Actions Workflow for automated releases of OpenCode IntelliJ plugin
+# Triggers on git tags matching semantic versioning pattern (v1.0.0, v1.0.1, etc.)
+# Creates GitHub releases with built plugin artifacts
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on any tag starting with v followed by semantic version
+      - 'v*.*'    # Also support two-part versions for pre-releases
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: write  # Required to create releases and upload assets
+  packages: write  # For potential future package registry integration
+
+jobs:
+  release:
+    name: Release ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag_name: ${{ steps.version.outputs.tag_name }}
+    
+    steps:
+      - name: Maximize Build Space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          large-packages: false
+
+      - name: Fetch Sources
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # Required for git tag operations and changelog generation
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Extract Version from Tag
+        id: version
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          VERSION=${TAG_NAME#v}  # Remove 'v' prefix
+          
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build Plugin
+        run: ./gradlew buildPlugin
+
+      - name: Generate Release Notes
+        id: release-notes
+        run: |
+          # Get previous tag for changelog
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          # Generate basic changelog
+          if [ ! -z "$PREVIOUS_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..HEAD)
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)")
+          fi
+          
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag_name }}
+          name: OpenCode IntelliJ Plugin v${{ steps.version.outputs.version }}
+          body: |
+            ## OpenCode IntelliJ Plugin v${{ steps.version.outputs.version }}
+            
+            ### What's New
+            
+            This release includes the latest features, bug fixes, and improvements.
+            
+            ### Installation
+            
+            1. Download the plugin file from this release
+            2. Go to **File → Settings → Plugins** in IntelliJ IDEA
+            3. Click **Install plugin from disk...**
+            4. Select the downloaded `.zip` file
+            5. Restart IntelliJ
+            
+            ### Changelog
+            
+            ${{ steps.release-notes.outputs.changelog }}
+            
+          files: |
+            ./build/distributions/*.zip
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.tag_name, '-') || contains(steps.version.outputs.tag_name, 'rc') || contains(steps.version.outputs.tag_name, 'alpha') || contains(steps.version.outputs.tag_name, 'beta') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
